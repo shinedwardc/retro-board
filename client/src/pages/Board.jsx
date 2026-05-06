@@ -1,16 +1,16 @@
-import { useState, useEffect } from "react";
-import socket from "../socket";
+import { DndContext } from "@dnd-kit/core";
+import { restrictToParentElement } from "@dnd-kit/modifiers";
+import { arrayMove } from "@dnd-kit/sortable";
+import canvasConfetti from "canvas-confetti";
+import { useEffect, useState } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
 import NoteColumn from "../components/NoteColumn";
-import { getUserColor } from "../utility/colors";
-import { DndContext } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
-import { restrictToParentElement } from "@dnd-kit/modifiers";
-import canvasConfetti from "canvas-confetti";
-import toast, { Toaster } from "react-hot-toast";
+import socket from "../socket";
+import { getUserColor } from "../utils/colors";
 
 const Board = ({ session, onLeave }) => {
-	const { roomId, userName } = session;
+	const { roomCode, userName } = session;
 	const [users, setUsers] = useState([]);
 	const [notes, setNotes] = useState([]);
 
@@ -18,7 +18,7 @@ const Board = ({ session, onLeave }) => {
 	useEffect(() => {
 		socket.connect();
 		// Emit join event to server
-		socket.emit("room:join", { roomId, userName });
+		socket.emit("room:join", { roomCode, userName });
 
 		socket.on("room:state", ({ notes, users }) => {
 			setNotes(notes);
@@ -63,7 +63,9 @@ const Board = ({ session, onLeave }) => {
 		socket.on("note:deleted", ({ noteId }) =>
 			setNotes((prevNotes) => prevNotes.filter((note) => note.id !== noteId)),
 		);
-		socket.on("note:moved", (updatedNotes) => setNotes(updatedNotes));
+		socket.on("note:moved", (noteIds) => {
+			setNotes(prev => noteIds.map(id => prev.find(n => n.id === id)).filter(Boolean))
+		});
 
 		return () => {
 			socket.off("room:state");
@@ -76,28 +78,26 @@ const Board = ({ session, onLeave }) => {
 			socket.off("note:moved");
 			socket.disconnect();
 		};
-	}, [roomId, userName]);
+	}, [roomCode, userName]);
 
 	// Drag and drop handler for reordering notes
 	const handleDragEnd = (event) => {
 		const { active, over } = event;
-		if (over && active.id !== over.id) {
-			setNotes((prev) => {
-				const oldIndex = prev.findIndex((n) => n.id === active.id);
-				const newIndex = prev.findIndex((n) => n.id === over.id);
-				const reordered = arrayMove(prev, oldIndex, newIndex);
-				socket.emit("note:move", {
-					roomId,
-					noteIds: reordered.map((n) => n.id),
-				});
-				return reordered;
-			});
-		}
-		return;
+		if (!over || active.id === over.id) return;
+
+		const oldIndex = notes.findIndex((n) => n.id === active.id);
+		const newIndex = notes.findIndex((n) => n.id === over.id);
+		const reordered = arrayMove(notes, oldIndex, newIndex);
+
+		setNotes(reordered);
+		socket.emit("note:move", {
+			roomCode,
+			noteIds: reordered.map((n) => n.id),
+		});
 	};
 
 	const handleCopyRoomId = () => {
-		navigator.clipboard.writeText(roomId);
+		navigator.clipboard.writeText(roomCode);
 		toast.success("Room ID copied to clipboard", {
 			position: "top-center",
 			style: {
@@ -114,7 +114,7 @@ const Board = ({ session, onLeave }) => {
 
 	const createNote = (input, category) => {
 		socket.emit("note:create", {
-			roomId,
+			roomCode,
 			note: {
 				id: uuidv4(),
 				content: input.trim(),
@@ -126,15 +126,15 @@ const Board = ({ session, onLeave }) => {
 	};
 
 	const voteNote = (noteId) => {
-		socket.emit("note:vote", { roomId, noteId });
+		socket.emit("note:vote", { roomCode, noteId });
 	};
 
 	const updateNote = (noteId, updatedContent) => {
-		socket.emit("note:update", { roomId, noteId, updatedContent });
+		socket.emit("note:update", { roomCode, noteId, updatedContent });
 	};
 
 	const deleteNote = (noteId) => {
-		socket.emit("note:delete", { roomId, noteId });
+		socket.emit("note:delete", { roomCode, noteId });
 	};
 
 	return (
@@ -145,7 +145,7 @@ const Board = ({ session, onLeave }) => {
 					<div className="grid grid-flow-col gap-x-4 items-center">
 						<h1 className="text-xl font-bold text-gray-800">Retro Board</h1>
 						<p className="text-sm text-gray-500 bg-gray-200 px-2 py-1 rounded-lg">
-							Room: <span className="font-mono">{roomId}</span>
+							Room ID: <span className="font-mono">{roomCode}</span>
 						</p>
 					</div>
 					<div className="grid grid-flow-col gap-x-4 items-center">

@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useState } from "react";
 
 const NoteCard = ({ note, voteNote, updateNote, deleteNote, userName }) => {
 	const [editedContent, setEditedContent] = useState(note.content);

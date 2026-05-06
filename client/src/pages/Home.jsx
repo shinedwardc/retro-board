@@ -1,22 +1,22 @@
 import { useState } from "react";
-import { v4 as uuidv4 } from "uuid";
+import generateRoomCode from "../utils/generateRoomCode";
 
 const Home = ({ onJoin }) => {
 	const [username, setUsername] = useState("");
-	const [roomId, setRoomId] = useState("");
+	const [roomCode, setRoomCode] = useState("");
 
 	// Creating a new room
 	const handleCreateRoom = () => {
 		if (!username.trim()) return;
 
-		onJoin({ roomId: uuidv4(), userName: username.trim() });
+		onJoin({ roomCode: generateRoomCode(), userName: username.trim() });
 	};
 
 	// Joining an existing room
 	const handleJoinRoom = () => {
-		if (!username.trim() || !roomId.trim()) return;
+		if (!username.trim() || !roomCode.trim()) return;
 
-		onJoin({ roomId: roomId.trim(), userName: username.trim() });
+		onJoin({ roomCode: roomCode.trim(), userName: username.trim() });
 	};
 
 	return (
@@ -38,9 +38,9 @@ const Home = ({ onJoin }) => {
 				<div className="flex items-center gap-2">
 					<input
 						className="flex-1 border rounded-lg px-4 py-2 text-sm"
-						placeholder="Room ID"
-						value={roomId}
-						onChange={(e) => setRoomId(e.target.value)}
+						placeholder="Room Code"
+						value={roomCode}
+						onChange={(e) => setRoomCode(e.target.value)}
 					/>
 					<button
 						onClick={handleJoinRoom}

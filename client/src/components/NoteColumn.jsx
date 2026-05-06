@@ -1,10 +1,10 @@
-import { useState } from "react";
-import NoteCard from "./NoteCard";
 import { useDroppable } from "@dnd-kit/core";
 import {
 	SortableContext,
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useState } from "react";
+import NoteCard from "./NoteCard";
 
 const NoteColumn = ({
 	notes,
