@@ -7,6 +7,7 @@ import { DndContext } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import canvasConfetti from "canvas-confetti";
+import toast, { Toaster } from "react-hot-toast";
 
 const Board = ({ session, onLeave }) => {
 	const { roomId, userName } = session;
@@ -28,6 +29,9 @@ const Board = ({ session, onLeave }) => {
 			setUsers((prev) =>
 				prev.includes(userName) ? prev : [...prev, userName],
 			);
+			toast(`${userName} joined the room!`, {
+				icon: "👋",
+			});
 		});
 		socket.on("user:left", ({ userName }) => {
 			setUsers((prevUsers) => prevUsers.filter((user) => user !== userName));
@@ -92,6 +96,22 @@ const Board = ({ session, onLeave }) => {
 		return;
 	};
 
+	const handleCopyRoomId = () => {
+		navigator.clipboard.writeText(roomId);
+		toast.success("Room ID copied to clipboard", {
+			position: "top-center",
+			style: {
+				border: "1px solid #6b7280",
+				padding: "12px",
+				color: "#6b7280",
+			},
+			iconTheme: {
+				primary: "#6b7280",
+				secondary: "#FFFAEE",
+			},
+		});
+	};
+
 	const createNote = (input, category) => {
 		socket.emit("note:create", {
 			roomId,
@@ -149,14 +169,14 @@ const Board = ({ session, onLeave }) => {
 							</div>
 						)}
 						<button
-							onClick={() => navigator.clipboard.writeText(roomId)}
+							onClick={handleCopyRoomId}
 							className="text-sm text-white p-2 bg-gray-500 rounded-lg hover:bg-gray-800"
 						>
-							Copy ID
+							Copy Room ID
 						</button>
 						<button
 							onClick={onLeave}
-							className="text-sm text-white p-2 bg-gray-500 rounded-lg hover:bg-gray-800"
+							className="text-sm text-white p-2 bg-red-500 rounded-lg hover:bg-gray-800"
 						>
 							Leave
 						</button>
@@ -195,6 +215,7 @@ const Board = ({ session, onLeave }) => {
 						/>
 					</div>
 				</div>
+				<Toaster position="bottom-right" reverseOrder={false} />
 			</div>
 		</DndContext>
 	);

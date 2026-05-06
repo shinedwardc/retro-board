@@ -60,21 +60,50 @@ const NoteColumn = ({
 					ref={setNodeRef}
 					className="flex flex-col gap-y-2 overflow-y-auto h-[60vh]"
 				>
-					<SortableContext
-						items={notes.map((note) => note.id)}
-						strategy={verticalListSortingStrategy}
-					>
-						{notes.map((note) => (
-							<NoteCard
-								key={note.id}
-								note={note}
-								voteNote={voteNote}
-								updateNote={updateNote}
-								deleteNote={deleteNote}
-								userName={userName}
-							/>
-						))}
-					</SortableContext>
+					{notes.length > 0 ? (
+						<SortableContext
+							items={notes.map((note) => note.id)}
+							strategy={verticalListSortingStrategy}
+						>
+							{notes.map((note) => (
+								<NoteCard
+									key={note.id}
+									note={note}
+									voteNote={voteNote}
+									updateNote={updateNote}
+									deleteNote={deleteNote}
+									userName={userName}
+								/>
+							))}
+						</SortableContext>
+					) : (
+						<div>
+							{category === "positive" ? (
+								<div className="text-center text-gray-500 mt-10">
+									<p>What went well?</p>
+									<p>
+										Start by adding some positive notes to celebrate your team's
+										successes!
+									</p>
+								</div>
+							) : category === "negative" ? (
+								<div className="text-center text-gray-500 mt-10">
+									<p>What to improve?</p>
+									<p>
+										Start by adding some constructive feedback to help your team
+										grow!
+									</p>
+								</div>
+							) : (
+								<div className="text-center text-gray-500 mt-10">
+									<p>No action items yet.</p>
+									<p>
+										Add some tasks to plan ahead and keep the momentum going!
+									</p>
+								</div>
+							)}
+						</div>
+					)}
 				</div>
 			</div>
 		</div>
