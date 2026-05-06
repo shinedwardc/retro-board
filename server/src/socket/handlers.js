@@ -75,16 +75,18 @@ export function registerSocketHandlers(io, socket) {
         const note = room.notes.find(n => n.id === noteId)
         if (!note) return
 
-        if (note.votes.includes(socket.data.username)) {
+        const incrementingVote = !note.votes.includes(socket.data.username);
+        if (incrementingVote) {
+            // User is voting for the note, and the user hasn't voted for it yet, so add the user's vote
+            note.votes.push(socket.data.username)
+        }
+        else {
             // User has already voted, remove the vote from the user
             note.votes = note.votes.filter(voter => voter !== socket.data.username)
         }
-        else {
-            note.votes.push(socket.data.username)
-        }
         
         // Broadcast the updated vote count to all users in the room, including the sender
-        io.to(roomId).emit('note:voted', {noteId, votes: note.votes})
+        io.to(roomId).emit('note:voted', {noteId, votes: note.votes, incrementingVote})
         console.log(`Note voted in room ${roomId} by ${socket.data.username}`)
     })
 

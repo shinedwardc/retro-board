@@ -15,6 +15,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@tailwindcss/vite": "^4.2.4",
+    "canvas-confetti": "^1.9.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "socket.io-client": "^4.8.3",
@@ -22,6 +23,7 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.14",
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
