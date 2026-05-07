@@ -5,6 +5,7 @@ import canvasConfetti from "canvas-confetti";
 import { useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
+import ConfirmDialog from "../components/confirmDialog";
 import NoteColumn from "../components/NoteColumn";
 import socket from "../socket";
 import { getUserColor } from "../utils/colors";
@@ -13,18 +14,30 @@ const Board = ({ session, onLeave }) => {
 	const { roomCode, userName } = session;
 	const [users, setUsers] = useState([]);
 	const [notes, setNotes] = useState([]);
+	const [isCreator, setIsCreator] = useState(false);
+	const [showConfirm, setShowConfirm] = useState(false);
 
 	// Set up socket event listeners and join room on component mount
 	useEffect(() => {
 		socket.connect();
-		// Emit join event to server
-		socket.emit("room:join", { roomCode, userName });
 
-		socket.on("room:state", ({ notes, users }) => {
-			setNotes(notes);
-			setUsers(users);
+		// Send creator token if we have one stored for this room
+		const token = localStorage.getItem(`creator-token:${roomCode}`);
+		socket.emit("room:join", { roomCode, userName, token });
+
+		// If we just created the room, store the creator token
+		socket.on("room:created", ({ token }) => {
+			localStorage.setItem(`creator-token:${roomCode}`, token);
 		});
 
+		// Handle initial room state and updates
+		socket.on("room:state", ({ notes, users, isCreator }) => {
+			setNotes(notes);
+			setUsers(users);
+			setIsCreator(isCreator);
+		});
+
+		/* Handle user join/leave and note events */
 		socket.on("user:joined", ({ userName }) => {
 			setUsers((prev) =>
 				prev.includes(userName) ? prev : [...prev, userName],
@@ -36,7 +49,6 @@ const Board = ({ session, onLeave }) => {
 		socket.on("user:left", ({ userName }) => {
 			setUsers((prevUsers) => prevUsers.filter((user) => user !== userName));
 		});
-
 		socket.on("note:created", (note) =>
 			setNotes((prevNotes) => [...prevNotes, note]),
 		);
@@ -68,8 +80,10 @@ const Board = ({ session, onLeave }) => {
 				noteIds.map((id) => prev.find((n) => n.id === id)).filter(Boolean),
 			);
 		});
+		socket.on("board:cleared", () => setNotes([]));
 
 		return () => {
+			socket.off("room:created");
 			socket.off("room:state");
 			socket.off("user:joined");
 			socket.off("user:left");
@@ -78,6 +92,7 @@ const Board = ({ session, onLeave }) => {
 			socket.off("note:voted");
 			socket.off("note:deleted");
 			socket.off("note:moved");
+			socket.off("board:cleared");
 			socket.disconnect();
 		};
 	}, [roomCode, userName]);
@@ -139,8 +154,26 @@ const Board = ({ session, onLeave }) => {
 		socket.emit("note:delete", { roomCode, noteId });
 	};
 
+	const clearBoard = () => {
+		setShowConfirm(true);
+	};
+
+	const handleConfirmClear = () => {
+		socket.emit("board:clear", { roomCode });
+		setShowConfirm(false);
+	};
+
 	return (
 		<DndContext onDragEnd={handleDragEnd} modifiers={[restrictToParentElement]}>
+			{showConfirm && (
+				<ConfirmDialog
+					isOpen={showConfirm}
+					title="Clear Board"
+					message="⚠️ Are you sure you want to clear the board? This action cannot be undone."
+					onConfirm={handleConfirmClear}
+					onCancel={() => setShowConfirm(false)}
+				/>
+			)}
 			<div className="h-screen bg-yellow-50 p-6 flex flex-col">
 				{/* Header */}
 				<div className="flex items-center justify-between mb-6">
@@ -180,10 +213,19 @@ const Board = ({ session, onLeave }) => {
 						<button
 							type="button"
 							onClick={onLeave}
-							className="text-sm text-white p-2 bg-red-500 rounded-lg hover:bg-gray-800"
+							className="text-sm text-white p-2 bg-orange-500 rounded-lg hover:bg-gray-800"
 						>
 							Leave
 						</button>
+						{isCreator && (
+							<button
+								type="button"
+								onClick={clearBoard}
+								className="text-sm text-white p-2 bg-red-500 rounded-lg hover:bg-orange-700"
+							>
+								Clear Board
+							</button>
+						)}
 					</div>
 				</div>
 

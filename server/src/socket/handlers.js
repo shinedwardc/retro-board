@@ -1,3 +1,5 @@
+import "dotenv/config";
+import jwt from "jsonwebtoken";
 import pool from "../db.js";
 
 // Track users in each room in memory
@@ -11,7 +13,7 @@ const roomUsers = new Map();
 
 export function registerSocketHandlers(io, socket) {
 	// Handle client request to join a room
-	socket.on("room:join", async ({ roomCode, userName }) => {
+	socket.on("room:join", async ({ roomCode, userName, token = null }) => {
 		socket.join(roomCode);
 		socket.data.username = userName;
 		socket.data.roomCode = roomCode;
@@ -22,11 +24,35 @@ export function registerSocketHandlers(io, socket) {
 			]);
 
 			if (roomQuery.rows.length === 0) {
-				// If the room doesn't exist in the database, create it
+				// Create new room and issue a creator JWT if room didn't exist
 				roomQuery = await pool.query(
 					`INSERT INTO rooms (code) VALUES ($1) RETURNING *`,
 					[roomCode],
 				);
+
+				const newRoom = roomQuery.rows[0];
+				const creatorToken = jwt.sign(
+					{ roomId: newRoom.id, roomCode, role: "creator" },
+					process.env.JWT_SECRET,
+					{ expiresIn: "30d" },
+				);
+
+				// Mark this socket connection as the creator of the room
+				socket.data.isCreator = true;
+				socket.emit("room:created", { token: creatorToken });
+			} else {
+				// Existing room — check if they have a valid creator token
+				if (token) {
+					try {
+						const decoded = jwt.verify(token, process.env.JWT_SECRET);
+						if (decoded.roomCode === roomCode && decoded.role === "creator") {
+							socket.data.isCreator = true;
+						}
+					} catch {
+						// Invalid/expired token — treat as regular user
+						socket.data.isCreator = false;
+					}
+				}
 			}
 
 			const room = roomQuery.rows[0];
@@ -61,7 +87,11 @@ export function registerSocketHandlers(io, socket) {
 				socket.to(roomCode).emit("user:joined", { userName });
 			}
 			// Broadcast the current state of the room to the newly joined user
-			socket.emit("room:state", { notes, users });
+			socket.emit("room:state", {
+				notes,
+				users,
+				isCreator: socket.data.isCreator ?? false,
+			});
 		} catch (err) {
 			console.error("Error joining room:", err);
 		}
@@ -74,7 +104,7 @@ export function registerSocketHandlers(io, socket) {
 				`SELECT COUNT(*) FROM notes WHERE room_id = $1`,
 				[socket.data.roomDbId],
 			);
-			const position = parseInt(countResult.rows[0].count);
+			const position = parseInt(countResult.rows[0].count, 10);
 			const result = await pool.query(
 				`INSERT INTO notes (room_id, content, category, author, votes, position)
                 VALUES ($1, $2, $3, $4, $5, $6)
@@ -166,6 +196,21 @@ export function registerSocketHandlers(io, socket) {
 			);
 		} catch (err) {
 			console.error("Error deleting note:", err);
+		}
+	});
+
+	socket.on("board:clear", async ({ roomCode }) => {
+		if (!socket.data.isCreator) return;
+		try {
+			await pool.query(`DELETE FROM notes WHERE room_id = $1`, [
+				socket.data.roomDbId,
+			]);
+			io.to(roomCode).emit("board:cleared");
+			console.log(
+				`Board cleared in room ${roomCode} by ${socket.data.username}`,
+			);
+		} catch (err) {
+			console.error("Error clearing board:", err);
 		}
 	});
 
