@@ -2,9 +2,9 @@ import pool from "../db.js";
 
 // Track users in each room in memory
 const roomUsers = new Map();
-// roomUsers : {
-//   [roomId]: [userName1, userName2, ...]
-// }
+/* roomUsers : {
+/   [roomId]: [userName1, userName2, ...]
+*/
 
 // roomCode: a unique code for the room that clients use to join (e.g. "ABCD1234")
 // roomDbId: the actual room ID from the database (UUID from postgres) that is used for database operations

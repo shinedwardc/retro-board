@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-server:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server dependencies
+        run: npm install
+        working-directory: server
+
+      - name: Run Biome checks
+        run: npm run check
+        working-directory: server
+  
+  lint-client:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        run: npm install
+        working-directory: client
+
+      - name: Run Biome checks
+        run: npm run check
+        working-directory: client
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [lint-server, lint-client]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy to Render
+        run: curl "${{ secrets.RENDER_DEPLOY_HOOK }}"
