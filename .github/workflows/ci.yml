@@ -57,4 +57,4 @@ jobs:
       - name: Deploy to Render
         run: curl "${{ secrets.RENDER_DEPLOY_HOOK }}"
       - name: Deploy to Vercel
-        run: curl ${{ secrets.VERCEL_DEPLOY_HOOK }}"
+        run: curl "${{ secrets.VERCEL_DEPLOY_HOOK }}"
