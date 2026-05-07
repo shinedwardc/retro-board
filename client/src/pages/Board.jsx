@@ -64,7 +64,9 @@ const Board = ({ session, onLeave }) => {
 			setNotes((prevNotes) => prevNotes.filter((note) => note.id !== noteId)),
 		);
 		socket.on("note:moved", (noteIds) => {
-			setNotes(prev => noteIds.map(id => prev.find(n => n.id === id)).filter(Boolean))
+			setNotes((prev) =>
+				noteIds.map((id) => prev.find((n) => n.id === id)).filter(Boolean),
+			);
 		});
 
 		return () => {
@@ -152,9 +154,9 @@ const Board = ({ session, onLeave }) => {
 						{users && users.length > 0 && (
 							<div className="flex flex-row px-2 py-1 rounded-lg items-center">
 								<div className="flex flex-row gap-x-0.75">
-									{users.map((user, index) => (
+									{users.map((user) => (
 										<p
-											key={index}
+											key={user}
 											className={`w-8 h-8 flex items-center justify-center text-xs text-white rounded-full p-2`}
 											style={{ backgroundColor: getUserColor(user) }}
 										>
@@ -169,12 +171,14 @@ const Board = ({ session, onLeave }) => {
 							</div>
 						)}
 						<button
+							type="button"
 							onClick={handleCopyRoomId}
 							className="text-sm text-white p-2 bg-gray-500 rounded-lg hover:bg-gray-800"
 						>
 							Copy Room ID
 						</button>
 						<button
+							type="button"
 							onClick={onLeave}
 							className="text-sm text-white p-2 bg-red-500 rounded-lg hover:bg-gray-800"
 						>

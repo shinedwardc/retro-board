@@ -46,6 +46,7 @@ const NoteColumn = ({
 						}}
 					/>
 					<button
+						type="button"
 						onClick={() => {
 							createNote(input, category);
 							setInput("");

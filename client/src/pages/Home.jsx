@@ -30,6 +30,7 @@ const Home = ({ onJoin }) => {
 					onChange={(e) => setUsername(e.target.value)}
 				/>
 				<button
+					type="button"
 					onClick={handleCreateRoom}
 					className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700"
 				>
@@ -43,6 +44,7 @@ const Home = ({ onJoin }) => {
 						onChange={(e) => setRoomCode(e.target.value)}
 					/>
 					<button
+						type="button"
 						onClick={handleJoinRoom}
 						className="bg-gray-800 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-900"
 					>
