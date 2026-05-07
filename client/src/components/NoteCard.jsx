@@ -52,6 +52,7 @@ const NoteCard = ({ note, voteNote, updateNote, deleteNote, userName }) => {
 			<p className="text-xs text-gray-500">— {note.author}</p>
 			<div className="flex items-center justify-between mt-1">
 				<button
+					type="button"
 					onPointerDown={(e) => e.stopPropagation()}
 					onClick={() => voteNote(note.id)}
 					className={`text-xs ${note.votes.includes(userName) ? "bg-green-400" : "bg-white"} rounded-full px-2 py-1 hover:bg-green-600`}
@@ -62,6 +63,7 @@ const NoteCard = ({ note, voteNote, updateNote, deleteNote, userName }) => {
 					(!isEditing ? (
 						<div className="flex flex-row items-center gap-x-2">
 							<button
+								type="button"
 								onPointerDown={(e) => e.stopPropagation()}
 								onClick={() => {
 									setIsEditingState(true);
@@ -71,6 +73,7 @@ const NoteCard = ({ note, voteNote, updateNote, deleteNote, userName }) => {
 								Edit
 							</button>
 							<button
+								type="button"
 								onPointerDown={(e) => e.stopPropagation()}
 								onClick={() => deleteNote(note.id)}
 								className="text-xs text-white bg-red-400 hover:bg-red-600 rounded-full px-2 py-1"
@@ -81,6 +84,7 @@ const NoteCard = ({ note, voteNote, updateNote, deleteNote, userName }) => {
 					) : (
 						<div className="flex flex-row items-center gap-x-2">
 							<button
+								type="button"
 								onPointerDown={(e) => e.stopPropagation()}
 								onClick={() => {
 									updateNote(note.id, editedContent);
@@ -91,6 +95,7 @@ const NoteCard = ({ note, voteNote, updateNote, deleteNote, userName }) => {
 								Save
 							</button>
 							<button
+								type="button"
 								onPointerDown={(e) => e.stopPropagation()}
 								onClick={() => {
 									setEditedContent(note.content);
