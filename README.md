@@ -48,7 +48,6 @@ retro-board/
 | | URL |
 |---|---|
 | **App** | https://retroflowboard.vercel.app |
-| **API** | https://retro-board-izpo.onrender.com |
 
 ## Available Scripts
 
