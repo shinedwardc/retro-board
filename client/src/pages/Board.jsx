@@ -50,7 +50,7 @@ const Board = ({ session, onLeave }) => {
 			setUsers((prevUsers) => prevUsers.filter((user) => user !== userName));
 		});
 		socket.on("note:created", (note) =>
-			setNotes((prevNotes) => [...prevNotes, note]),
+			setNotes((prev) => prev.some((n) => n.id === note.id) ? prev : [...prev, note]),
 		);
 		socket.on("note:updated", ({ noteId, updatedContent }) =>
 			setNotes((prevNotes) =>
@@ -130,27 +130,37 @@ const Board = ({ session, onLeave }) => {
 	};
 
 	const createNote = (input, category) => {
-		socket.emit("note:create", {
-			roomCode,
-			note: {
-				id: uuidv4(),
-				content: input.trim(),
-				category: category,
-				author: userName,
-				votes: [],
-			},
-		});
+		const note = {
+			id: uuidv4(),
+			content: input.trim(),
+			category,
+			author: userName,
+			votes: [],
+		};
+		setNotes((prev) => [...prev, note]);
+		socket.emit("note:create", { roomCode, note });
 	};
 
 	const voteNote = (noteId) => {
+		setNotes((prev) =>
+			prev.map((n) => {
+				if (n.id !== noteId) return n;
+				const hasVoted = n.votes.includes(userName);
+				return { ...n, votes: hasVoted ? n.votes.filter((v) => v !== userName) : [...n.votes, userName] };
+			}),
+		);
 		socket.emit("note:vote", { roomCode, noteId });
 	};
 
 	const updateNote = (noteId, updatedContent) => {
+		setNotes((prev) =>
+			prev.map((n) => n.id === noteId ? { ...n, content: updatedContent } : n),
+		);
 		socket.emit("note:update", { roomCode, noteId, updatedContent });
 	};
 
 	const deleteNote = (noteId) => {
+		setNotes((prev) => prev.filter((n) => n.id !== noteId));
 		socket.emit("note:delete", { roomCode, noteId });
 	};
 

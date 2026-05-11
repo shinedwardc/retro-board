@@ -106,10 +106,11 @@ export function registerSocketHandlers(io, socket) {
 			);
 			const position = parseInt(countResult.rows[0].count, 10);
 			const result = await pool.query(
-				`INSERT INTO notes (room_id, content, category, author, votes, position)
-                VALUES ($1, $2, $3, $4, $5, $6)
+				`INSERT INTO notes (id, room_id, content, category, author, votes, position)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING *`,
 				[
+					note.id,
 					socket.data.roomDbId,
 					note.content,
 					note.category,
