@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon --exec 'tsx src/index.ts' --ext ts",
-    "start": "node src/index.js",
+    "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "migrate": "node-pg-migrate up",
     "migrate:create": "node-pg-migrate create",
