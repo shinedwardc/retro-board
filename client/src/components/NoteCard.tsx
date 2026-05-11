@@ -1,8 +1,23 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
+import type { Note } from "../types/index";
 
-const NoteCard = ({ note, voteNote, updateNote, deleteNote, userName }) => {
+interface NoteCardProps {
+	note: Note;
+	voteNote: (noteId: string) => void;
+	updateNote: (noteId: string, content: string) => void;
+	deleteNote: (noteId: string) => void;
+	userName: string;
+}
+
+const NoteCard = ({
+	note,
+	voteNote,
+	updateNote,
+	deleteNote,
+	userName,
+}: NoteCardProps) => {
 	const [editedContent, setEditedContent] = useState(note.content);
 	const [isEditing, setIsEditingState] = useState(false);
 

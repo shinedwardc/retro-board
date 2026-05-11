@@ -1,4 +1,4 @@
-import { DndContext } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { arrayMove } from "@dnd-kit/sortable";
 import canvasConfetti from "canvas-confetti";
@@ -8,43 +8,42 @@ import { v4 as uuidv4 } from "uuid";
 import ConfirmDialog from "../components/confirmDialog";
 import NoteColumn from "../components/NoteColumn";
 import socket from "../socket";
+import type { Note, NoteCategory, Session } from "../types/index";
 import { getUserColor } from "../utils/colors";
 
-const Board = ({ session, onLeave }) => {
+interface BoardProps {
+	session: Session;
+	onLeave: () => void;
+}
+
+const Board = ({ session, onLeave }: BoardProps) => {
 	const { roomCode, userName } = session;
-	const [users, setUsers] = useState([]);
-	const [notes, setNotes] = useState([]);
+	const [users, setUsers] = useState<string[]>([]);
+	const [notes, setNotes] = useState<Note[]>([]);
 	const [isCreator, setIsCreator] = useState(false);
 	const [showConfirm, setShowConfirm] = useState(false);
 
-	// Set up socket event listeners and join room on component mount
 	useEffect(() => {
 		socket.connect();
 
-		// Send creator token if we have one stored for this room
 		const token = localStorage.getItem(`creator-token:${roomCode}`);
-		socket.emit("room:join", { roomCode, userName, token });
+		socket.emit("room:join", { roomCode, userName, token: token ?? undefined });
 
-		// If we just created the room, store the creator token
 		socket.on("room:created", ({ token }) => {
 			localStorage.setItem(`creator-token:${roomCode}`, token);
 		});
 
-		// Handle initial room state and updates
 		socket.on("room:state", ({ notes, users, isCreator }) => {
 			setNotes(notes);
 			setUsers(users);
 			setIsCreator(isCreator);
 		});
 
-		/* Handle user join/leave and note events */
 		socket.on("user:joined", ({ userName }) => {
 			setUsers((prev) =>
 				prev.includes(userName) ? prev : [...prev, userName],
 			);
-			toast(`${userName} joined the room!`, {
-				icon: "👋",
-			});
+			toast(`${userName} joined the room!`, { icon: "👋" });
 		});
 		socket.on("user:left", ({ userName }) => {
 			setUsers((prevUsers) => prevUsers.filter((user) => user !== userName));
@@ -67,7 +66,7 @@ const Board = ({ session, onLeave }) => {
 					particleCount: 60,
 					spread: 70,
 					origin: { y: 0.6 },
-				}); // Trigger confetti animation on upvote
+				});
 			setNotes((prevNotes) =>
 				prevNotes.map((note) =>
 					note.id === noteId ? { ...note, votes } : note,
@@ -78,8 +77,11 @@ const Board = ({ session, onLeave }) => {
 			setNotes((prevNotes) => prevNotes.filter((note) => note.id !== noteId)),
 		);
 		socket.on("note:moved", (noteIds) => {
-			setNotes((prev) =>
-				noteIds.map((id) => prev.find((n) => n.id === id)).filter(Boolean),
+			setNotes(
+				(prev) =>
+					noteIds
+						.map((id) => prev.find((n) => n.id === id))
+						.filter(Boolean) as Note[],
 			);
 		});
 		socket.on("board:cleared", () => setNotes([]));
@@ -99,8 +101,7 @@ const Board = ({ session, onLeave }) => {
 		};
 	}, [roomCode, userName]);
 
-	// Drag and drop handler for reordering notes
-	const handleDragEnd = (event) => {
+	const handleDragEnd = (event: DragEndEvent) => {
 		const { active, over } = event;
 		if (!over || active.id === over.id) return;
 
@@ -131,19 +132,19 @@ const Board = ({ session, onLeave }) => {
 		});
 	};
 
-	const createNote = (input, category) => {
-		const note = {
+	const createNote = (input: string, category: NoteCategory) => {
+		const note: Omit<Note, "room_id" | "position" | "created_at"> = {
 			id: uuidv4(),
 			content: input.trim(),
 			category,
 			author: userName,
 			votes: [],
 		};
-		setNotes((prev) => [...prev, note]);
+		setNotes((prev) => [...prev, { ...note, room_id: "", position: 0 }]);
 		socket.emit("note:create", { roomCode, note });
 	};
 
-	const voteNote = (noteId) => {
+	const voteNote = (noteId: string) => {
 		setNotes((prev) =>
 			prev.map((n) => {
 				if (n.id !== noteId) return n;
@@ -159,7 +160,7 @@ const Board = ({ session, onLeave }) => {
 		socket.emit("note:vote", { roomCode, noteId });
 	};
 
-	const updateNote = (noteId, updatedContent) => {
+	const updateNote = (noteId: string, updatedContent: string) => {
 		setNotes((prev) =>
 			prev.map((n) =>
 				n.id === noteId ? { ...n, content: updatedContent } : n,
@@ -168,7 +169,7 @@ const Board = ({ session, onLeave }) => {
 		socket.emit("note:update", { roomCode, noteId, updatedContent });
 	};
 
-	const deleteNote = (noteId) => {
+	const deleteNote = (noteId: string) => {
 		setNotes((prev) => prev.filter((n) => n.id !== noteId));
 		socket.emit("note:delete", { roomCode, noteId });
 	};
@@ -194,7 +195,6 @@ const Board = ({ session, onLeave }) => {
 				/>
 			)}
 			<div className="h-screen bg-yellow-50 p-6 flex flex-col">
-				{/* Header */}
 				<div className="flex items-center justify-between mb-6">
 					<div className="grid grid-flow-col gap-x-4 items-center">
 						<h1 className="text-xl font-bold text-gray-800">Retro Board</h1>
@@ -209,7 +209,7 @@ const Board = ({ session, onLeave }) => {
 									{users.map((user) => (
 										<p
 											key={user}
-											className={`w-8 h-8 flex items-center justify-center text-xs text-white rounded-full p-2`}
+											className="w-8 h-8 flex items-center justify-center text-xs text-white rounded-full p-2"
 											style={{ backgroundColor: getUserColor(user) }}
 										>
 											{user[0].toUpperCase()}
@@ -248,7 +248,6 @@ const Board = ({ session, onLeave }) => {
 					</div>
 				</div>
 
-				{/* Notes grid */}
 				<div className="flex justify-center w-full">
 					<div className="grid grid-cols-3 gap-x-4 w-full max-w-6xl">
 						<NoteColumn

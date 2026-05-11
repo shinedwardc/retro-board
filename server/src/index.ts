@@ -1,14 +1,24 @@
 import { createServer } from "node:http";
 import cors from "cors";
+import "dotenv/config";
 import express from "express";
 import { Server } from "socket.io";
-import "dotenv/config";
 import { registerSocketHandlers } from "./socket/handlers.js";
+import type {
+	ClientToServerEvents,
+	ServerToClientEvents,
+	SocketData,
+} from "./types/index.js";
 
 const app = express();
 const httpServer = createServer(app);
 
-const io = new Server(httpServer, {
+const io = new Server<
+	ClientToServerEvents,
+	ServerToClientEvents,
+	Record<string, never>,
+	SocketData
+>(httpServer, {
 	cors: {
 		origin: process.env.CLIENT_URL || "http://localhost:5173",
 		methods: ["GET", "POST"],
@@ -18,10 +28,8 @@ const io = new Server(httpServer, {
 app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
 app.use(express.json());
 
-// Testing endpoint working
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-// Socket.IO connection handling
 io.on("connection", (socket) => {
 	console.log(`Client connected: ${socket.id}`);
 	registerSocketHandlers(io, socket);

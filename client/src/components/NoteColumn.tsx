@@ -4,7 +4,18 @@ import {
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useState } from "react";
+import type { Note, NoteCategory } from "../types/index";
 import NoteCard from "./NoteCard";
+
+interface NoteColumnProps {
+	notes: Note[];
+	category: NoteCategory;
+	voteNote: (noteId: string) => void;
+	createNote: (input: string, category: NoteCategory) => void;
+	updateNote: (noteId: string, content: string) => void;
+	deleteNote: (noteId: string) => void;
+	userName: string;
+}
 
 const NoteColumn = ({
 	notes,
@@ -14,7 +25,7 @@ const NoteColumn = ({
 	updateNote,
 	deleteNote,
 	userName,
-}) => {
+}: NoteColumnProps) => {
 	const [input, setInput] = useState("");
 
 	const { setNodeRef } = useDroppable({
@@ -23,7 +34,6 @@ const NoteColumn = ({
 
 	return (
 		<div className="flex flex-col h-full">
-			{/* Column header */}
 			<div className="flex items-center justify-center mb-2 gap-x-2">
 				<h2 className="text-lg text-center font-bold text-gray-800">
 					{category === "positive"
@@ -33,9 +43,7 @@ const NoteColumn = ({
 							: "Action Items"}
 				</h2>
 			</div>
-			{/* Input and add button */}
 			<div className="flex flex-col gap-y-4 flex-1 p-3 bg-gray-300 rounded-xl overlflow-hidden">
-				{/* Input */}
 				<div className="flex flex-row gap-x-2 max-w-sm">
 					<input
 						className="flex-1 border rounded-lg px-4 py-2 text-sm bg-white"
@@ -56,7 +64,6 @@ const NoteColumn = ({
 						+
 					</button>
 				</div>
-				{/* Notes list */}
 				<div
 					ref={setNodeRef}
 					className="flex flex-col gap-y-2 overflow-y-auto h-[60vh]"

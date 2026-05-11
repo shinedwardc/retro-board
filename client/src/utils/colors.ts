@@ -1,4 +1,4 @@
-const COLORS = [
+const COLORS: string[] = [
 	"#f87171", // red
 	"#fb923c", // orange
 	"#a3e635", // lime
@@ -9,10 +9,9 @@ const COLORS = [
 	"#f472b6", // pink
 ];
 
-export const getUserColor = (userName) => {
-	let hash = 5381; // Prime number starting point
+export const getUserColor = (userName: string): string => {
+	let hash = 5381;
 	for (let i = 0; i < userName.length; i++) {
-		// Bitwise hash function (djb2)
 		hash = (hash * 33) ^ userName.charCodeAt(i);
 	}
 	return COLORS[(hash >>> 0) % COLORS.length];

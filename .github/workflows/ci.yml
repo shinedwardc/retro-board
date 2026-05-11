@@ -27,7 +27,11 @@ jobs:
       - name: Run Biome checks
         run: npm run check
         working-directory: server
-  
+
+      - name: Typecheck server
+        run: npm run typecheck
+        working-directory: server
+
   lint-client:
     runs-on: ubuntu-latest
     
@@ -47,6 +51,10 @@ jobs:
 
       - name: Run Biome checks
         run: npm run check
+        working-directory: client
+
+      - name: Typecheck client
+        run: npm run typecheck
         working-directory: client
 
       - name: Build client

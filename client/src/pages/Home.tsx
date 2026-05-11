@@ -1,21 +1,22 @@
 import { useState } from "react";
+import type { Session } from "../types/index";
 import generateRoomCode from "../utils/generateRoomCode";
 
-const Home = ({ onJoin }) => {
+interface HomeProps {
+	onJoin: (session: Session) => void;
+}
+
+const Home = ({ onJoin }: HomeProps) => {
 	const [username, setUsername] = useState("");
 	const [roomCode, setRoomCode] = useState("");
 
-	// Creating a new room
 	const handleCreateRoom = () => {
 		if (!username.trim()) return;
-
 		onJoin({ roomCode: generateRoomCode(), userName: username.trim() });
 	};
 
-	// Joining an existing room
 	const handleJoinRoom = () => {
 		if (!username.trim() || !roomCode.trim()) return;
-
 		onJoin({ roomCode: roomCode.trim(), userName: username.trim() });
 	};
 
