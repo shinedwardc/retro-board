@@ -22,7 +22,7 @@ const Home = ({ onJoin }: HomeProps) => {
 
 	return (
 		<div className="min-h-screen flex items-center justify-center bg-gray-50">
-			<div className="bg-white p-8 rounded-xl shadow-md w-full max-w-md space-y-4">
+			<div className="bg-white p-4 sm:p-8 rounded-xl shadow-md w-full max-w-md space-y-4">
 				<h1 className="text-2xl font-bold text-gray-800">Retro Board</h1>
 				<input
 					className="w-full border rounded-lg px-4 py-2 text-sm"

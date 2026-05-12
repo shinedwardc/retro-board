@@ -48,7 +48,7 @@ const NoteCard = ({
 			style={style}
 			{...attributes}
 			{...listeners}
-			className="bg-yellow-200 rounded-xl p-4 shadow-sm flex flex-col gap-2"
+			className="bg-yellow-200 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col gap-2"
 		>
 			{isEditing ? (
 				<textarea

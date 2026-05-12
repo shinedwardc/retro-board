@@ -43,10 +43,10 @@ const NoteColumn = ({
 							: "Action Items"}
 				</h2>
 			</div>
-			<div className="flex flex-col gap-y-4 flex-1 p-3 bg-gray-300 rounded-xl overlflow-hidden">
-				<div className="flex flex-row gap-x-2 max-w-sm">
+			<div className="flex flex-col gap-y-4 flex-1 min-h-0 p-3 bg-gray-300 rounded-xl">
+				<div className="flex flex-row gap-x-2">
 					<input
-						className="flex-1 border rounded-lg px-4 py-2 text-sm bg-white"
+						className="flex-1 min-w-0 border rounded-lg px-4 py-2 text-sm bg-white"
 						placeholder="Add note..."
 						value={input}
 						onChange={(e) => {
@@ -66,7 +66,7 @@ const NoteColumn = ({
 				</div>
 				<div
 					ref={setNodeRef}
-					className="flex flex-col gap-y-2 overflow-y-auto h-[60vh]"
+					className="flex flex-col gap-y-2 flex-1 min-h-0 overflow-y-auto"
 				>
 					{notes.length > 0 ? (
 						<SortableContext

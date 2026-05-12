@@ -16,12 +16,22 @@ interface BoardProps {
 	onLeave: () => void;
 }
 
+const CATEGORIES: NoteCategory[] = ["positive", "negative", "action"];
+
+const categoryLabel = (cat: NoteCategory) =>
+	cat === "positive"
+		? "Went Well"
+		: cat === "negative"
+			? "To Improve"
+			: "Actions";
+
 const Board = ({ session, onLeave }: BoardProps) => {
 	const { roomCode, userName } = session;
 	const [users, setUsers] = useState<string[]>([]);
 	const [notes, setNotes] = useState<Note[]>([]);
 	const [isCreator, setIsCreator] = useState(false);
 	const [showConfirm, setShowConfirm] = useState(false);
+	const [activeTab, setActiveTab] = useState<NoteCategory>("positive");
 
 	useEffect(() => {
 		socket.connect();
@@ -174,10 +184,6 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		socket.emit("note:delete", { roomCode, noteId });
 	};
 
-	const clearBoard = () => {
-		setShowConfirm(true);
-	};
-
 	const handleConfirmClear = () => {
 		socket.emit("board:clear", { roomCode });
 		setShowConfirm(false);
@@ -194,8 +200,8 @@ const Board = ({ session, onLeave }: BoardProps) => {
 					onCancel={() => setShowConfirm(false)}
 				/>
 			)}
-			<div className="h-screen bg-yellow-50 p-6 flex flex-col">
-				<div className="flex items-center justify-between mb-6">
+			<div className="h-screen bg-yellow-50 p-3 sm:p-6 flex flex-col">
+				<div className="flex items-center justify-between mb-3 sm:mb-6 flex-wrap gap-y-2">
 					<div className="grid grid-flow-col gap-x-4 items-center">
 						<h1 className="text-xl font-bold text-gray-800">Retro Board</h1>
 						<p className="text-sm text-gray-500 bg-gray-200 px-2 py-1 rounded-lg">
@@ -216,7 +222,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 										</p>
 									))}
 								</div>
-								<h3 className="ml-2">
+								<h3 className="ml-2 hidden sm:inline">
 									{users.length} {users.length === 1 ? "person" : "people"}{" "}
 									online
 								</h3>
@@ -239,7 +245,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 						{isCreator && (
 							<button
 								type="button"
-								onClick={clearBoard}
+								onClick={() => setShowConfirm(true)}
 								className="text-sm text-white p-2 bg-red-500 rounded-lg hover:bg-orange-700"
 							>
 								Clear Board
@@ -248,8 +254,47 @@ const Board = ({ session, onLeave }: BoardProps) => {
 					</div>
 				</div>
 
-				<div className="flex justify-center w-full">
-					<div className="grid grid-cols-3 gap-x-4 w-full max-w-6xl">
+				{/* Mobile tab bar */}
+				<div className="flex md:hidden gap-x-1 mb-2 flex-shrink-0">
+					{CATEGORIES.map((cat) => {
+						const count = notes.filter((n) => n.category === cat).length;
+						return (
+							<button
+								key={cat}
+								type="button"
+								onClick={() => setActiveTab(cat)}
+								className={`flex-1 py-2 text-sm font-medium rounded-lg ${activeTab === cat ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-600"}`}
+							>
+								{categoryLabel(cat)}
+								{count > 0 && ` (${count})`}
+							</button>
+						);
+					})}
+				</div>
+
+				<div className="flex-1 min-h-0 flex justify-center w-full">
+					{/* Mobile: one column at a time */}
+					<div className="md:hidden w-full h-full">
+						{CATEGORIES.map((cat) => (
+							<div
+								key={cat}
+								className={`h-full ${activeTab === cat ? "block" : "hidden"}`}
+							>
+								<NoteColumn
+									notes={notes.filter((n) => n.category === cat)}
+									category={cat}
+									voteNote={voteNote}
+									createNote={createNote}
+									updateNote={updateNote}
+									deleteNote={deleteNote}
+									userName={userName}
+								/>
+							</div>
+						))}
+					</div>
+
+					{/* Desktop: 3-column grid */}
+					<div className="hidden md:grid grid-cols-3 gap-x-4 w-full max-w-6xl h-full">
 						<NoteColumn
 							notes={notes.filter((note) => note.category === "positive")}
 							category="positive"
