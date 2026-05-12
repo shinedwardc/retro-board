@@ -14,6 +14,7 @@ export interface Note {
 export interface Session {
 	roomCode: string;
 	userName: string;
+	intent: "create" | "join";
 }
 
 export interface ServerToClientEvents {
@@ -39,6 +40,7 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
+	"room:create": (data: { roomCode: string; userName: string }) => void;
 	"room:join": (data: {
 		roomCode: string;
 		userName: string;

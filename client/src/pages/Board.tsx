@@ -2,7 +2,7 @@ import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { arrayMove } from "@dnd-kit/sortable";
 import canvasConfetti from "canvas-confetti";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
 import ConfirmDialog from "../components/confirmDialog";
@@ -27,6 +27,9 @@ const categoryLabel = (cat: NoteCategory) =>
 
 const Board = ({ session, onLeave }: BoardProps) => {
 	const { roomCode, userName } = session;
+	const onLeaveRef = useRef(onLeave); // { current: onLeave }
+	onLeaveRef.current = onLeave; // Effect doesn't need to re-run just because onLeave is a new function on every render
+
 	const [users, setUsers] = useState<string[]>([]);
 	const [notes, setNotes] = useState<Note[]>([]);
 	const [isCreator, setIsCreator] = useState(false);
@@ -36,8 +39,21 @@ const Board = ({ session, onLeave }: BoardProps) => {
 	useEffect(() => {
 		socket.connect();
 
-		const token = localStorage.getItem(`creator-token:${roomCode}`);
-		socket.emit("room:join", { roomCode, userName, token: token ?? undefined });
+		if (session.intent === "create") {
+			socket.emit("room:create", { roomCode, userName });
+		} else {
+			const token = localStorage.getItem(`creator-token:${roomCode}`);
+			socket.emit("room:join", {
+				roomCode,
+				userName,
+				token: token ?? undefined,
+			});
+		}
+
+		socket.on("room:error", ({ message }) => {
+			toast.error(message);
+			onLeaveRef.current();
+		});
 
 		socket.on("room:created", ({ token }) => {
 			localStorage.setItem(`creator-token:${roomCode}`, token);
@@ -97,6 +113,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		socket.on("board:cleared", () => setNotes([]));
 
 		return () => {
+			socket.off("room:error");
 			socket.off("room:created");
 			socket.off("room:state");
 			socket.off("user:joined");
@@ -109,7 +126,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 			socket.off("board:cleared");
 			socket.disconnect();
 		};
-	}, [roomCode, userName]);
+	}, [roomCode, userName, session.intent]);
 
 	const handleDragEnd = (event: DragEndEvent) => {
 		const { active, over } = event;

@@ -49,17 +49,22 @@ const NoteColumn = ({
 						className="flex-1 min-w-0 border rounded-lg px-4 py-2 text-sm bg-white"
 						placeholder="Add note..."
 						value={input}
-						onChange={(e) => {
-							setInput(e.target.value);
+						onChange={(e) => setInput(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" && input.trim()) {
+								createNote(input.trim(), category);
+								setInput("");
+							}
 						}}
 					/>
 					<button
 						type="button"
+						disabled={!input.trim()}
 						onClick={() => {
-							createNote(input, category);
+							createNote(input.trim(), category);
 							setInput("");
 						}}
-						className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+						className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
 					>
 						+
 					</button>

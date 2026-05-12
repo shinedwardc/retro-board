@@ -34,6 +34,7 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
+	"room:create": (data: { roomCode: string; userName: string }) => void;
 	"room:join": (data: {
 		roomCode: string;
 		userName: string;

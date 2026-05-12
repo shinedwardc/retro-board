@@ -26,53 +26,89 @@ type AppSocket = Socket<
 const roomUsers = new Map<string, string[]>();
 
 export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
+	socket.on("room:create", async ({ roomCode, userName }) => {
+		socket.join(roomCode);
+		socket.data.username = userName;
+		socket.data.roomCode = roomCode;
+
+		try {
+			const insertResult = await pool.query<{ id: string; code: string }>(
+				`INSERT INTO rooms (code) VALUES ($1) ON CONFLICT (code) DO NOTHING RETURNING *`,
+				[roomCode],
+			);
+
+			if (insertResult.rows.length === 0) {
+				socket.emit("room:error", {
+					message: "Room code already taken. Please try again.",
+				});
+				return;
+			}
+
+			const room = insertResult.rows[0];
+
+			socket.data.roomDbId = room.id;
+			socket.data.isCreator = true;
+
+			const creatorToken = jwt.sign(
+				{ roomId: room.id, roomCode, role: "creator" },
+				process.env.JWT_SECRET as string,
+				{ expiresIn: "30d" },
+			);
+			socket.emit("room:created", { token: creatorToken });
+
+			if (!roomUsers.has(roomCode)) roomUsers.set(roomCode, []);
+			const users = roomUsers.get(roomCode) as string[];
+			if (!users.includes(userName)) users.push(userName);
+
+			const notesQuery = await pool.query<Note>(
+				`SELECT * FROM notes WHERE room_id = $1 ORDER BY position ASC, created_at ASC`,
+				[socket.data.roomDbId],
+			);
+			socket.emit("room:state", {
+				notes: notesQuery.rows,
+				users,
+				isCreator: true,
+			});
+			console.log(`Room ${roomCode} created by ${userName}`);
+		} catch (err) {
+			console.error("Error creating room:", err);
+		}
+	});
+
 	socket.on("room:join", async ({ roomCode, userName, token }) => {
 		socket.join(roomCode);
 		socket.data.username = userName;
 		socket.data.roomCode = roomCode;
 
 		try {
-			let roomQuery = await pool.query<{ id: string; code: string }>(
+			const result = await pool.query<{ id: string; code: string }>(
 				`SELECT * FROM rooms WHERE code = $1`,
 				[roomCode],
 			);
 
-			if (roomQuery.rows.length === 0) {
-				roomQuery = await pool.query<{ id: string; code: string }>(
-					`INSERT INTO rooms (code) VALUES ($1) RETURNING *`,
-					[roomCode],
-				);
-
-				const newRoom = roomQuery.rows[0];
-				const creatorToken = jwt.sign(
-					{ roomId: newRoom.id, roomCode, role: "creator" },
-					process.env.JWT_SECRET as string,
-					{ expiresIn: "30d" },
-				);
-
-				socket.data.isCreator = true;
-				socket.emit("room:created", { token: creatorToken });
-			} else {
-				if (token) {
-					try {
-						const decoded = jwt.verify(
-							token,
-							process.env.JWT_SECRET as string,
-						) as {
-							roomCode: string;
-							role: string;
-						};
-						if (decoded.roomCode === roomCode && decoded.role === "creator") {
-							socket.data.isCreator = true;
-						}
-					} catch {
-						socket.data.isCreator = false;
-					}
-				}
+			if (result.rows.length === 0) {
+				socket.emit("room:error", {
+					message: "Room not found. Check the code and try again.",
+				});
+				return;
 			}
 
-			const room = roomQuery.rows[0];
+			const room = result.rows[0];
 			socket.data.roomDbId = room.id;
+
+			if (token) {
+				try {
+					const decoded = jwt.verify(
+						token,
+						process.env.JWT_SECRET as string,
+					) as { roomCode: string; role: string };
+					if (decoded.roomCode === roomCode && decoded.role === "creator") {
+						socket.data.isCreator = true;
+					}
+				} catch {
+					socket.data.isCreator = false;
+				}
+			}
 
 			const notesQuery = await pool.query<Note>(
 				`SELECT * FROM notes WHERE room_id = $1 ORDER BY position ASC, created_at ASC`,
@@ -80,11 +116,9 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 			);
 			const notes = notesQuery.rows;
 
-			if (!roomUsers.has(roomCode)) {
-				roomUsers.set(roomCode, []);
-			}
-
+			if (!roomUsers.has(roomCode)) roomUsers.set(roomCode, []);
 			const users = roomUsers.get(roomCode) as string[];
+
 			if (users.includes(userName)) {
 				socket.emit("room:error", {
 					message: `"${userName}" is already taken in this room.`,
@@ -101,6 +135,7 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 				users,
 				isCreator: socket.data.isCreator ?? false,
 			});
+			console.log(`${userName} joined room ${roomCode}`);
 		} catch (err) {
 			console.error("Error joining room:", err);
 		}
