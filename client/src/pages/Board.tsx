@@ -2,8 +2,15 @@ import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { arrayMove } from "@dnd-kit/sortable";
 import canvasConfetti from "canvas-confetti";
-import { useEffect, useRef, useState } from "react";
-import toast, { Toaster } from "react-hot-toast";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useReducer,
+	useRef,
+	useState,
+} from "react";
+import toast from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
 import ConfirmDialog from "../components/confirmDialog";
 import NoteColumn from "../components/NoteColumn";
@@ -25,16 +32,68 @@ const categoryLabel = (cat: NoteCategory) =>
 			? "To Improve"
 			: "Actions";
 
+type NotesAction =
+	| { type: "set"; notes: Note[] }
+	| { type: "add"; note: Note }
+	| { type: "update"; noteId: string; updatedContent: string }
+	| { type: "vote_toggle"; noteId: string; userName: string }
+	| { type: "vote_set"; noteId: string; votes: string[] }
+	| { type: "delete"; noteId: string }
+	| { type: "move"; noteIds: string[] }
+	| { type: "clear" };
+
+function notesReducer(state: Note[], action: NotesAction): Note[] {
+	switch (action.type) {
+		case "set":
+			return action.notes;
+		case "add":
+			return state.some((n) => n.id === action.note.id)
+				? state
+				: [...state, action.note];
+		case "update":
+			return state.map((n) =>
+				n.id === action.noteId ? { ...n, content: action.updatedContent } : n,
+			);
+		case "vote_toggle":
+			return state.map((n) => {
+				if (n.id !== action.noteId) return n;
+				const hasVoted = n.votes.includes(action.userName);
+				return {
+					...n,
+					votes: hasVoted
+						? n.votes.filter((v) => v !== action.userName)
+						: [...n.votes, action.userName],
+				};
+			});
+		case "vote_set":
+			return state.map((n) =>
+				n.id === action.noteId ? { ...n, votes: action.votes } : n,
+			);
+		case "delete":
+			return state.filter((n) => n.id !== action.noteId);
+		case "move":
+			return action.noteIds
+				.map((id) => state.find((n) => n.id === id))
+				.filter(Boolean) as Note[];
+		case "clear":
+			return [];
+	}
+}
+
 const Board = ({ session, onLeave }: BoardProps) => {
 	const { roomCode, userName } = session;
-	const onLeaveRef = useRef(onLeave); // { current: onLeave }
-	onLeaveRef.current = onLeave; // Effect doesn't need to re-run just because onLeave is a new function on every render
+	const onLeaveRef = useRef(onLeave);
+	onLeaveRef.current = onLeave;
 
 	const [users, setUsers] = useState<string[]>([]);
-	const [notes, setNotes] = useState<Note[]>([]);
+	const [notes, dispatch] = useReducer(notesReducer, []);
 	const [isCreator, setIsCreator] = useState(false);
 	const [showConfirm, setShowConfirm] = useState(false);
 	const [activeTab, setActiveTab] = useState<NoteCategory>("positive");
+
+	// Lets handleDragEnd read the latest notes without being in its dep array
+	const notesRef = useRef(notes);
+	notesRef.current = notes;
 
 	useEffect(() => {
 		socket.connect();
@@ -51,8 +110,8 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		}
 
 		socket.on("room:error", ({ message }) => {
-			toast.error(message);
 			onLeaveRef.current();
+			toast.error(message);
 		});
 
 		socket.on("room:created", ({ token }) => {
@@ -60,7 +119,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		});
 
 		socket.on("room:state", ({ notes, users, isCreator }) => {
-			setNotes(notes);
+			dispatch({ type: "set", notes });
 			setUsers(users);
 			setIsCreator(isCreator);
 		});
@@ -74,43 +133,21 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		socket.on("user:left", ({ userName }) => {
 			setUsers((prevUsers) => prevUsers.filter((user) => user !== userName));
 		});
-		socket.on("note:created", (note) =>
-			setNotes((prev) =>
-				prev.some((n) => n.id === note.id) ? prev : [...prev, note],
-			),
-		);
+		socket.on("note:created", (note) => dispatch({ type: "add", note }));
 		socket.on("note:updated", ({ noteId, updatedContent }) =>
-			setNotes((prevNotes) =>
-				prevNotes.map((note) =>
-					note.id === noteId ? { ...note, content: updatedContent } : note,
-				),
-			),
+			dispatch({ type: "update", noteId, updatedContent }),
 		);
 		socket.on("note:voted", ({ noteId, votes, incrementingVote }) => {
-			incrementingVote &&
-				canvasConfetti({
-					particleCount: 60,
-					spread: 70,
-					origin: { y: 0.6 },
-				});
-			setNotes((prevNotes) =>
-				prevNotes.map((note) =>
-					note.id === noteId ? { ...note, votes } : note,
-				),
-			);
+			if (incrementingVote) {
+				canvasConfetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+			}
+			dispatch({ type: "vote_set", noteId, votes });
 		});
 		socket.on("note:deleted", ({ noteId }) =>
-			setNotes((prevNotes) => prevNotes.filter((note) => note.id !== noteId)),
+			dispatch({ type: "delete", noteId }),
 		);
-		socket.on("note:moved", (noteIds) => {
-			setNotes(
-				(prev) =>
-					noteIds
-						.map((id) => prev.find((n) => n.id === id))
-						.filter(Boolean) as Note[],
-			);
-		});
-		socket.on("board:cleared", () => setNotes([]));
+		socket.on("note:moved", (noteIds) => dispatch({ type: "move", noteIds }));
+		socket.on("board:cleared", () => dispatch({ type: "clear" }));
 
 		return () => {
 			socket.off("room:error");
@@ -128,22 +165,24 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		};
 	}, [roomCode, userName, session.intent]);
 
-	const handleDragEnd = (event: DragEndEvent) => {
-		const { active, over } = event;
-		if (!over || active.id === over.id) return;
+	const handleDragEnd = useCallback(
+		(event: DragEndEvent) => {
+			const { active, over } = event;
+			if (!over || active.id === over.id) return;
 
-		const oldIndex = notes.findIndex((n) => n.id === active.id);
-		const newIndex = notes.findIndex((n) => n.id === over.id);
-		const reordered = arrayMove(notes, oldIndex, newIndex);
+			const current = notesRef.current;
+			const oldIndex = current.findIndex((n) => n.id === active.id);
+			const newIndex = current.findIndex((n) => n.id === over.id);
+			const reordered = arrayMove(current, oldIndex, newIndex);
+			const noteIds = reordered.map((n) => n.id);
 
-		setNotes(reordered);
-		socket.emit("note:move", {
-			roomCode,
-			noteIds: reordered.map((n) => n.id),
-		});
-	};
+			dispatch({ type: "move", noteIds });
+			socket.emit("note:move", { roomCode, noteIds });
+		},
+		[roomCode],
+	);
 
-	const handleCopyRoomId = () => {
+	const handleCopyRoomId = useCallback(() => {
 		navigator.clipboard.writeText(roomCode);
 		toast.success("Room ID copied to clipboard", {
 			position: "top-center",
@@ -157,53 +196,69 @@ const Board = ({ session, onLeave }: BoardProps) => {
 				secondary: "#FFFAEE",
 			},
 		});
-	};
+	}, [roomCode]);
 
-	const createNote = (input: string, category: NoteCategory) => {
-		const note: Omit<Note, "room_id" | "position" | "created_at"> = {
-			id: uuidv4(),
-			content: input.trim(),
-			category,
-			author: userName,
-			votes: [],
-		};
-		setNotes((prev) => [...prev, { ...note, room_id: "", position: 0 }]);
-		socket.emit("note:create", { roomCode, note });
-	};
+	const createNote = useCallback(
+		(input: string, category: NoteCategory) => {
+			const note: Omit<Note, "room_id" | "position" | "created_at"> = {
+				id: uuidv4(),
+				content: input.trim(),
+				category,
+				author: userName,
+				votes: [],
+			};
+			dispatch({ type: "add", note: { ...note, room_id: "", position: 0 } });
+			socket.emit("note:create", { roomCode, note });
+		},
+		[roomCode, userName],
+	);
 
-	const voteNote = (noteId: string) => {
-		setNotes((prev) =>
-			prev.map((n) => {
-				if (n.id !== noteId) return n;
-				const hasVoted = n.votes.includes(userName);
-				return {
-					...n,
-					votes: hasVoted
-						? n.votes.filter((v) => v !== userName)
-						: [...n.votes, userName],
-				};
-			}),
-		);
-		socket.emit("note:vote", { roomCode, noteId });
-	};
+	const voteNote = useCallback(
+		(noteId: string) => {
+			dispatch({ type: "vote_toggle", noteId, userName });
+			socket.emit("note:vote", { roomCode, noteId });
+		},
+		[roomCode, userName],
+	);
 
-	const updateNote = (noteId: string, updatedContent: string) => {
-		setNotes((prev) =>
-			prev.map((n) =>
-				n.id === noteId ? { ...n, content: updatedContent } : n,
-			),
-		);
-		socket.emit("note:update", { roomCode, noteId, updatedContent });
-	};
+	const updateNote = useCallback(
+		(noteId: string, updatedContent: string) => {
+			dispatch({ type: "update", noteId, updatedContent });
+			socket.emit("note:update", { roomCode, noteId, updatedContent });
+		},
+		[roomCode],
+	);
 
-	const deleteNote = (noteId: string) => {
-		setNotes((prev) => prev.filter((n) => n.id !== noteId));
-		socket.emit("note:delete", { roomCode, noteId });
-	};
+	const deleteNote = useCallback(
+		(noteId: string) => {
+			dispatch({ type: "delete", noteId });
+			socket.emit("note:delete", { roomCode, noteId });
+		},
+		[roomCode],
+	);
 
-	const handleConfirmClear = () => {
+	const handleConfirmClear = useCallback(() => {
 		socket.emit("board:clear", { roomCode });
 		setShowConfirm(false);
+	}, [roomCode]);
+
+	const positiveNotes = useMemo(
+		() => notes.filter((n) => n.category === "positive"),
+		[notes],
+	);
+	const negativeNotes = useMemo(
+		() => notes.filter((n) => n.category === "negative"),
+		[notes],
+	);
+	const actionNotes = useMemo(
+		() => notes.filter((n) => n.category === "action"),
+		[notes],
+	);
+
+	const notesByCategory = {
+		positive: positiveNotes,
+		negative: negativeNotes,
+		action: actionNotes,
 	};
 
 	return (
@@ -272,9 +327,9 @@ const Board = ({ session, onLeave }: BoardProps) => {
 				</div>
 
 				{/* Mobile tab bar */}
-				<div className="flex md:hidden gap-x-1 mb-2 flex-shrink-0">
+				<div className="flex md:hidden gap-x-1 mb-2 shrink-0">
 					{CATEGORIES.map((cat) => {
-						const count = notes.filter((n) => n.category === cat).length;
+						const count = notesByCategory[cat].length;
 						return (
 							<button
 								key={cat}
@@ -298,7 +353,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 								className={`h-full ${activeTab === cat ? "block" : "hidden"}`}
 							>
 								<NoteColumn
-									notes={notes.filter((n) => n.category === cat)}
+									notes={notesByCategory[cat]}
 									category={cat}
 									voteNote={voteNote}
 									createNote={createNote}
@@ -313,7 +368,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 					{/* Desktop: 3-column grid */}
 					<div className="hidden md:grid grid-cols-3 gap-x-4 w-full max-w-6xl h-full">
 						<NoteColumn
-							notes={notes.filter((note) => note.category === "positive")}
+							notes={positiveNotes}
 							category="positive"
 							voteNote={voteNote}
 							createNote={createNote}
@@ -322,7 +377,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 							userName={userName}
 						/>
 						<NoteColumn
-							notes={notes.filter((note) => note.category === "negative")}
+							notes={negativeNotes}
 							category="negative"
 							voteNote={voteNote}
 							createNote={createNote}
@@ -331,7 +386,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 							userName={userName}
 						/>
 						<NoteColumn
-							notes={notes.filter((note) => note.category === "action")}
+							notes={actionNotes}
 							category="action"
 							voteNote={voteNote}
 							createNote={createNote}
@@ -341,7 +396,6 @@ const Board = ({ session, onLeave }: BoardProps) => {
 						/>
 					</div>
 				</div>
-				<Toaster position="bottom-right" reverseOrder={false} />
 			</div>
 		</DndContext>
 	);

@@ -3,7 +3,7 @@ import {
 	SortableContext,
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { Note, NoteCategory } from "../types/index";
 import NoteCard from "./NoteCard";
 
@@ -123,4 +123,4 @@ const NoteColumn = ({
 	);
 };
 
-export default NoteColumn;
+export default memo(NoteColumn);

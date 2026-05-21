@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { Note } from "../types/index";
 
 interface NoteCardProps {
@@ -127,4 +127,4 @@ const NoteCard = ({
 	);
 };
 
-export default NoteCard;
+export default memo(NoteCard);
