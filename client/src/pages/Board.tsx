@@ -11,12 +11,14 @@ import {
 	useState,
 } from "react";
 import toast from "react-hot-toast";
+import Skeleton from "react-loading-skeleton";
 import { v4 as uuidv4 } from "uuid";
 import ConfirmDialog from "../components/confirmDialog";
 import NoteColumn from "../components/NoteColumn";
 import socket from "../socket";
 import type { Note, NoteCategory, Session } from "../types/index";
 import { getUserColor } from "../utils/colors";
+import "react-loading-skeleton/dist/skeleton.css";
 
 interface BoardProps {
 	session: Session;
@@ -276,21 +278,25 @@ const Board = ({ session, onLeave }: BoardProps) => {
 			<div className="h-screen bg-yellow-50 p-3 sm:p-6 flex flex-col">
 				<div className="flex items-center justify-between mb-3 sm:mb-6">
 					<div className="flex gap-x-4 items-center">
-						<div className="h-7 w-28 bg-gray-200 rounded animate-pulse" />
-						<div className="h-6 w-32 bg-gray-200 rounded-lg animate-pulse" />
+						<Skeleton width={112} height={28} />
+						<Skeleton width={128} height={24} borderRadius={8} />
 					</div>
 					<div className="flex gap-x-4 items-center">
-						<div className="h-8 w-24 bg-gray-200 rounded-lg animate-pulse" />
-						<div className="h-8 w-16 bg-gray-200 rounded-lg animate-pulse" />
+						<Skeleton width={96} height={32} borderRadius={8} />
+						<Skeleton width={64} height={32} borderRadius={8} />
 					</div>
 				</div>
 				<div className="flex-1 min-h-0 flex justify-center w-full">
 					<div className="hidden md:grid grid-cols-3 gap-x-4 w-full max-w-6xl h-full">
 						{[0, 1, 2].map((i) => (
-							<div key={i} className="bg-gray-200 rounded-xl animate-pulse" />
+							<div key={i} className="h-full">
+								<Skeleton height="100%" borderRadius={12} />
+							</div>
 						))}
 					</div>
-					<div className="md:hidden w-full h-full bg-gray-200 rounded-xl animate-pulse" />
+					<div className="md:hidden w-full h-full">
+						<Skeleton height="100%" borderRadius={12} />
+					</div>
 				</div>
 			</div>
 		);
