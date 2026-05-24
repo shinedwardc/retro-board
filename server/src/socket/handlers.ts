@@ -72,6 +72,9 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 			console.log(`Room ${roomCode} created by ${userName}`);
 		} catch (err) {
 			console.error("Error creating room:", err);
+			socket.emit("room:error", {
+				message: "Failed to create room. Please try again.",
+			});
 		}
 	});
 
@@ -138,6 +141,9 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 			console.log(`${userName} joined room ${roomCode}`);
 		} catch (err) {
 			console.error("Error joining room:", err);
+			socket.emit("room:error", {
+				message: "Failed to join room. Please try again.",
+			});
 		}
 	});
 

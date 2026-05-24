@@ -90,24 +90,32 @@ const Board = ({ session, onLeave }: BoardProps) => {
 	const [isCreator, setIsCreator] = useState(false);
 	const [showConfirm, setShowConfirm] = useState(false);
 	const [activeTab, setActiveTab] = useState<NoteCategory>("positive");
+	const [isReady, setIsReady] = useState(false);
 
 	// Lets handleDragEnd read the latest notes without being in its dep array
 	const notesRef = useRef(notes);
 	notesRef.current = notes;
 
 	useEffect(() => {
-		socket.connect();
+		socket.once("connect", () => {
+			if (session.intent === "create") {
+				socket.emit("room:create", { roomCode, userName });
+			} else {
+				const token = localStorage.getItem(`creator-token:${roomCode}`);
+				socket.emit("room:join", {
+					roomCode,
+					userName,
+					token: token ?? undefined,
+				});
+			}
+		});
 
-		if (session.intent === "create") {
-			socket.emit("room:create", { roomCode, userName });
-		} else {
-			const token = localStorage.getItem(`creator-token:${roomCode}`);
-			socket.emit("room:join", {
-				roomCode,
-				userName,
-				token: token ?? undefined,
-			});
-		}
+		socket.on("connect_error", () => {
+			onLeaveRef.current();
+			toast.error("Could not connect to server. Please try again.");
+		});
+
+		socket.connect();
 
 		socket.on("room:error", ({ message }) => {
 			onLeaveRef.current();
@@ -122,6 +130,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 			dispatch({ type: "set", notes });
 			setUsers(users);
 			setIsCreator(isCreator);
+			setIsReady(true);
 		});
 
 		socket.on("user:joined", ({ userName }) => {
@@ -150,6 +159,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		socket.on("board:cleared", () => dispatch({ type: "clear" }));
 
 		return () => {
+			socket.off("connect_error");
 			socket.off("room:error");
 			socket.off("room:created");
 			socket.off("room:state");
@@ -260,6 +270,31 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		negative: negativeNotes,
 		action: actionNotes,
 	};
+
+	if (!isReady) {
+		return (
+			<div className="h-screen bg-yellow-50 p-3 sm:p-6 flex flex-col">
+				<div className="flex items-center justify-between mb-3 sm:mb-6">
+					<div className="flex gap-x-4 items-center">
+						<div className="h-7 w-28 bg-gray-200 rounded animate-pulse" />
+						<div className="h-6 w-32 bg-gray-200 rounded-lg animate-pulse" />
+					</div>
+					<div className="flex gap-x-4 items-center">
+						<div className="h-8 w-24 bg-gray-200 rounded-lg animate-pulse" />
+						<div className="h-8 w-16 bg-gray-200 rounded-lg animate-pulse" />
+					</div>
+				</div>
+				<div className="flex-1 min-h-0 flex justify-center w-full">
+					<div className="hidden md:grid grid-cols-3 gap-x-4 w-full max-w-6xl h-full">
+						{[0, 1, 2].map((i) => (
+							<div key={i} className="bg-gray-200 rounded-xl animate-pulse" />
+						))}
+					</div>
+					<div className="md:hidden w-full h-full bg-gray-200 rounded-xl animate-pulse" />
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<DndContext onDragEnd={handleDragEnd} modifiers={[restrictToParentElement]}>
