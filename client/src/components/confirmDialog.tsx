@@ -6,26 +6,22 @@ interface ConfirmDialogProps {
 	onCancel: () => void;
 }
 
-const ConfirmDialog = ({
-	message,
-	onConfirm,
-	onCancel,
-}: ConfirmDialogProps) => (
-	<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-		<div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl">
-			<p className="text-gray-800 font-medium mb-4">{message}</p>
+const ConfirmDialog = ({ message, onConfirm, onCancel }: ConfirmDialogProps) => (
+	<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+		<div className="w-full max-w-sm rounded-lg bg-surface-2 p-6 shadow-xl">
+			<p className="mb-4 font-medium text-ink">{message}</p>
 			<div className="flex justify-end gap-3">
 				<button
 					type="button"
 					onClick={onCancel}
-					className="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+					className="rounded bg-surface-1 px-4 py-2 text-ink text-sm hover:bg-rail"
 				>
 					Cancel
 				</button>
 				<button
 					type="button"
 					onClick={onConfirm}
-					className="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+					className="rounded bg-line-improve px-4 py-2 text-sm text-white hover:brightness-90"
 				>
 					Confirm
 				</button>

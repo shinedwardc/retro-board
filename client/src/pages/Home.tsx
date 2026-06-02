@@ -30,18 +30,18 @@ const Home = ({ onJoin }: HomeProps) => {
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-gray-50">
-			<div className="bg-white p-8 rounded-xl shadow-md w-full max-w-md space-y-5">
-				<h1 className="text-2xl font-bold text-gray-800">Retro Board</h1>
+		<div className="flex min-h-screen items-center justify-center bg-surface-0">
+			<div className="w-full max-w-md space-y-5 rounded-xl bg-surface-2 p-8 shadow-md">
+				<h1 className="font-bold text-2xl text-ink-strong">Retro Board</h1>
 
-				<div className="flex rounded-lg overflow-hidden border border-gray-200">
+				<div className="flex overflow-hidden rounded-lg border border-rail">
 					<button
 						type="button"
 						onClick={() => setTab("create")}
-						className={`flex-1 py-2 text-sm font-medium transition-colors ${
+						className={`flex-1 py-2 font-medium text-sm transition-colors ${
 							tab === "create"
-								? "bg-blue-600 text-white"
-								: "bg-white text-gray-600 hover:bg-gray-50"
+								? "bg-accent text-white"
+								: "bg-surface-2 text-ink-muted hover:bg-surface-1"
 						}`}
 					>
 						Create Room
@@ -49,10 +49,10 @@ const Home = ({ onJoin }: HomeProps) => {
 					<button
 						type="button"
 						onClick={() => setTab("join")}
-						className={`flex-1 py-2 text-sm font-medium transition-colors ${
+						className={`flex-1 py-2 font-medium text-sm transition-colors ${
 							tab === "join"
-								? "bg-blue-600 text-white"
-								: "bg-white text-gray-600 hover:bg-gray-50"
+								? "bg-accent text-white"
+								: "bg-surface-2 text-ink-muted hover:bg-surface-1"
 						}`}
 					>
 						Join Room
@@ -60,7 +60,7 @@ const Home = ({ onJoin }: HomeProps) => {
 				</div>
 
 				<input
-					className="w-full border rounded-lg px-4 py-2 text-sm"
+					className="w-full rounded-lg border border-rail px-4 py-2 text-ink text-sm focus:border-accent focus:outline-none"
 					placeholder="Your name"
 					value={username}
 					onChange={(e) => setUsername(e.target.value)}
@@ -74,14 +74,14 @@ const Home = ({ onJoin }: HomeProps) => {
 						type="button"
 						disabled={!username.trim()}
 						onClick={handleCreate}
-						className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+						className="w-full rounded-lg bg-accent py-2 font-medium text-sm text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
 					>
 						Create New Room
 					</button>
 				) : (
 					<div className="space-y-3">
 						<input
-							className="w-full border rounded-lg px-4 py-2 text-sm"
+							className="w-full rounded-lg border border-rail px-4 py-2 text-ink text-sm focus:border-accent focus:outline-none"
 							placeholder="Room Code"
 							value={roomCode}
 							onChange={(e) => setRoomCode(e.target.value)}
@@ -93,7 +93,7 @@ const Home = ({ onJoin }: HomeProps) => {
 							type="button"
 							disabled={!username.trim() || !roomCode.trim()}
 							onClick={handleJoin}
-							className="w-full bg-gray-800 text-white rounded-lg py-2 text-sm font-medium hover:bg-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+							className="w-full rounded-lg bg-ink py-2 font-medium text-sm text-white hover:bg-ink-strong disabled:cursor-not-allowed disabled:opacity-40"
 						>
 							Join Room
 						</button>

@@ -1,12 +1,13 @@
+// Avatar palette — references the --color-user-* tokens defined in index.css.
 const COLORS: string[] = [
-	"#f87171", // red
-	"#fb923c", // orange
-	"#a3e635", // lime
-	"#34d399", // emerald
-	"#22d3ee", // cyan
-	"#818cf8", // indigo
-	"#e879f9", // fuchsia
-	"#f472b6", // pink
+	"var(--color-user-1)",
+	"var(--color-user-2)",
+	"var(--color-user-3)",
+	"var(--color-user-4)",
+	"var(--color-user-5)",
+	"var(--color-user-6)",
+	"var(--color-user-7)",
+	"var(--color-user-8)",
 ];
 
 export const getUserColor = (userName: string): string => {

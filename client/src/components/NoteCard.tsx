@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { memo, useState } from "react";
-import type { Note } from "../types/index";
+import type { Note, NoteCategory } from "../types/index";
 
 interface NoteCardProps {
 	note: Note;
@@ -11,13 +11,14 @@ interface NoteCardProps {
 	userName: string;
 }
 
-const NoteCard = ({
-	note,
-	voteNote,
-	updateNote,
-	deleteNote,
-	userName,
-}: NoteCardProps) => {
+// Left edge marks which "line" (column) the note belongs to.
+const CATEGORY_BORDER: Record<NoteCategory, string> = {
+	positive: "border-line-well",
+	negative: "border-line-improve",
+	action: "border-line-action",
+};
+
+const NoteCard = ({ note, voteNote, updateNote, deleteNote, userName }: NoteCardProps) => {
 	const [editedContent, setEditedContent] = useState(note.content);
 	const [isEditing, setIsEditingState] = useState(false);
 
@@ -48,7 +49,7 @@ const NoteCard = ({
 			style={style}
 			{...attributes}
 			{...listeners}
-			className="bg-yellow-200 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col gap-2"
+			className={`flex flex-col gap-2 rounded-xl border-l-4 bg-surface-2 p-3 shadow-sm sm:p-4 ${CATEGORY_BORDER[note.category]}`}
 		>
 			{isEditing ? (
 				<textarea
@@ -59,18 +60,18 @@ const NoteCard = ({
 							updateNote(note.id, editedContent);
 						}
 					}}
-					className="text-sm text-gray-800 flex-1 bg-transparent border-b border-gray-400 focus:outline-none"
+					className="flex-1 border-rail border-b bg-transparent text-ink text-sm focus:outline-none"
 				/>
 			) : (
-				<p className="text-sm text-gray-800 wrap-break-word">{note.content}</p>
+				<p className="wrap-break-word text-ink text-sm">{note.content}</p>
 			)}
-			<p className="text-xs text-gray-500">— {note.author}</p>
-			<div className="flex items-center justify-between mt-1">
+			<p className="font-mono text-ink-muted text-xs">— {note.author}</p>
+			<div className="mt-1 flex items-center justify-between">
 				<button
 					type="button"
 					onPointerDown={(e) => e.stopPropagation()}
 					onClick={() => voteNote(note.id)}
-					className={`text-xs ${note.votes.includes(userName) ? "bg-green-400" : "bg-white"} rounded-full px-2 py-1 hover:bg-green-600`}
+					className={`font-mono text-xs ${note.votes.includes(userName) ? "bg-line-action text-white" : "bg-surface-1 text-ink hover:bg-rail"} rounded-full px-2 py-1`}
 				>
 					👍 {note.votes.length}
 				</button>
@@ -83,7 +84,7 @@ const NoteCard = ({
 								onClick={() => {
 									setIsEditingState(true);
 								}}
-								className="text-xs text-white bg-blue-400 hover:bg-blue-600 rounded-full px-2 py-1"
+								className="rounded-full bg-accent px-2 py-1 text-white text-xs hover:bg-accent-hover"
 							>
 								Edit
 							</button>
@@ -91,7 +92,7 @@ const NoteCard = ({
 								type="button"
 								onPointerDown={(e) => e.stopPropagation()}
 								onClick={() => deleteNote(note.id)}
-								className="text-xs text-white bg-red-400 hover:bg-red-600 rounded-full px-2 py-1"
+								className="rounded-full bg-line-improve px-2 py-1 text-white text-xs hover:brightness-90"
 							>
 								Delete
 							</button>
@@ -105,7 +106,7 @@ const NoteCard = ({
 									updateNote(note.id, editedContent);
 									setIsEditingState(false);
 								}}
-								className="text-xs text-white bg-green-400 hover:bg-green-600 rounded-full px-2 py-1"
+								className="rounded-full bg-line-action px-2 py-1 text-white text-xs hover:brightness-90"
 							>
 								Save
 							</button>
@@ -116,7 +117,7 @@ const NoteCard = ({
 									setEditedContent(note.content);
 									setIsEditingState(false);
 								}}
-								className="text-xs text-white bg-gray-400 hover:bg-gray-600 rounded-full px-2 py-1"
+								className="rounded-full bg-ink-muted px-2 py-1 text-white text-xs hover:bg-ink"
 							>
 								Cancel
 							</button>

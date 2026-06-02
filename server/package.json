@@ -10,6 +10,8 @@
     "migrate": "node-pg-migrate up",
     "migrate:create": "node-pg-migrate create",
     "migrate:down": "node-pg-migrate down",
+    "migrate:prod": "node-pg-migrate up --envPath .env.production",
+    "migrate:prod:down": "node-pg-migrate down --envPath .env.production",
     "format": "biome format --write ./src",
     "lint": "biome lint --apply ./src",
     "check": "biome check ./src",

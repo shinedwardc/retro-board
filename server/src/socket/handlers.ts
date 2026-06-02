@@ -101,10 +101,10 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 
 			if (token) {
 				try {
-					const decoded = jwt.verify(
-						token,
-						process.env.JWT_SECRET as string,
-					) as { roomCode: string; role: string };
+					const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
+						roomCode: string;
+						role: string;
+					};
 					if (decoded.roomCode === roomCode && decoded.role === "creator") {
 						socket.data.isCreator = true;
 					}
@@ -158,22 +158,12 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 				`INSERT INTO notes (id, room_id, content, category, author, votes, position)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING *`,
-				[
-					note.id,
-					socket.data.roomDbId,
-					note.content,
-					note.category,
-					note.author,
-					[],
-					position,
-				],
+				[note.id, socket.data.roomDbId, note.content, note.category, note.author, [], position],
 			);
 
 			const savedNote = result.rows[0];
 			io.to(roomCode).emit("note:created", savedNote);
-			console.log(
-				`Note created in room ${roomCode} by ${socket.data.username}`,
-			);
+			console.log(`Note created in room ${roomCode} by ${socket.data.username}`);
 		} catch (err) {
 			console.error("Error creating note:", err);
 		}
@@ -181,15 +171,14 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 
 	socket.on("note:update", async ({ roomCode, noteId, updatedContent }) => {
 		try {
-			await pool.query(
-				`UPDATE notes SET content = $1 WHERE id = $2 AND room_id = $3`,
-				[updatedContent, noteId, socket.data.roomDbId],
-			);
+			await pool.query(`UPDATE notes SET content = $1 WHERE id = $2 AND room_id = $3`, [
+				updatedContent,
+				noteId,
+				socket.data.roomDbId,
+			]);
 
 			io.to(roomCode).emit("note:updated", { noteId, updatedContent });
-			console.log(
-				`Note updated in room ${roomCode} by ${socket.data.username}`,
-			);
+			console.log(`Note updated in room ${roomCode} by ${socket.data.username}`);
 		} catch (err) {
 			console.error("Error updating note:", err);
 		}
@@ -207,10 +196,11 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 				? [...votes, socket.data.username as string]
 				: votes.filter((voter) => voter !== socket.data.username);
 
-			await pool.query(
-				`UPDATE notes SET votes = $1 WHERE id = $2 AND room_id = $3`,
-				[updatedVotes, noteId, socket.data.roomDbId],
-			);
+			await pool.query(`UPDATE notes SET votes = $1 WHERE id = $2 AND room_id = $3`, [
+				updatedVotes,
+				noteId,
+				socket.data.roomDbId,
+			]);
 
 			io.to(roomCode).emit("note:voted", {
 				noteId,
@@ -231,9 +221,7 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 			]);
 
 			io.to(roomCode).emit("note:deleted", { noteId });
-			console.log(
-				`Note deleted in room ${roomCode} by ${socket.data.username}`,
-			);
+			console.log(`Note deleted in room ${roomCode} by ${socket.data.username}`);
 		} catch (err) {
 			console.error("Error deleting note:", err);
 		}
@@ -242,13 +230,9 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 	socket.on("board:clear", async ({ roomCode }) => {
 		if (!socket.data.isCreator) return;
 		try {
-			await pool.query(`DELETE FROM notes WHERE room_id = $1`, [
-				socket.data.roomDbId,
-			]);
+			await pool.query(`DELETE FROM notes WHERE room_id = $1`, [socket.data.roomDbId]);
 			io.to(roomCode).emit("board:cleared");
-			console.log(
-				`Board cleared in room ${roomCode} by ${socket.data.username}`,
-			);
+			console.log(`Board cleared in room ${roomCode} by ${socket.data.username}`);
 		} catch (err) {
 			console.error("Error clearing board:", err);
 		}
@@ -258,10 +242,11 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 		try {
 			await Promise.all(
 				noteIds.map((id, index) =>
-					pool.query(
-						`UPDATE notes SET position = $1 WHERE id = $2 AND room_id = $3`,
-						[index, id, socket.data.roomDbId],
-					),
+					pool.query(`UPDATE notes SET position = $1 WHERE id = $2 AND room_id = $3`, [
+						index,
+						id,
+						socket.data.roomDbId,
+					]),
 				),
 			);
 

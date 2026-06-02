@@ -4,11 +4,7 @@ import "dotenv/config";
 import express from "express";
 import { Server } from "socket.io";
 import { registerSocketHandlers } from "./socket/handlers.js";
-import type {
-	ClientToServerEvents,
-	ServerToClientEvents,
-	SocketData,
-} from "./types/index.js";
+import type { ClientToServerEvents, ServerToClientEvents, SocketData } from "./types/index.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -33,9 +29,7 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 io.on("connection", (socket) => {
 	console.log(`Client connected: ${socket.id}`);
 	registerSocketHandlers(io, socket);
-	socket.on("disconnect", () =>
-		console.log(`Client disconnected: ${socket.id}`),
-	);
+	socket.on("disconnect", () => console.log(`Client disconnected: ${socket.id}`));
 });
 
 const PORT = process.env.PORT || 3001;

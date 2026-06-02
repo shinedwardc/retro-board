@@ -1,6 +1,68 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+/* ==========================================================================
+   retro-board — global stylesheet (Transit Map theme)
+   Tailwind 4, CSS-first. Tokens declared in @theme generate utilities
+   (e.g. --color-line-well → bg-line-well / text-line-well / border-line-well).
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap");
 @import "tailwindcss";
 
-* {
-	font-family: "Inter", sans-serif;
+@theme {
+	/* --- Surfaces --------------------------------------------------------- */
+	--color-surface-0: #f8fafc; /* app canvas */
+	--color-surface-1: #e2e8f0; /* board / column background */
+	--color-surface-2: #ffffff; /* note paper */
+	--color-rail: #cbd5e1; /* connecting "track" lines, dividers */
+
+	/* --- Ink -------------------------------------------------------------- */
+	--color-ink-strong: #0f172a;
+	--color-ink: #1e293b;
+	--color-ink-muted: #94a3b8;
+
+	/* --- Brand accent ----------------------------------------------------- */
+	--color-accent: #2563eb;
+	--color-accent-hover: #1d4ed8;
+	--color-accent-soft: #dbeafe;
+
+	/* --- Transit "lines" (one per column) --------------------------------- */
+	--color-line-well: #0284c7; /* Went Well  — blue line   */
+	--color-line-improve: #dc2626; /* To Improve — red line    */
+	--color-line-action: #16a34a; /* Action Items — green line */
+	--color-interchange: #0f172a; /* action-item interchange nodes */
+
+	/* --- User avatars (transit-line hues, distinct per user) -------------- */
+	--color-user-1: #dc2626; /* red    */
+	--color-user-2: #ea580c; /* orange */
+	--color-user-3: #ca8a04; /* yellow */
+	--color-user-4: #16a34a; /* green  */
+	--color-user-5: #0284c7; /* blue   */
+	--color-user-6: #4f46e5; /* indigo */
+	--color-user-7: #9333ea; /* purple */
+	--color-user-8: #db2777; /* pink   */
+
+	/* --- Typography ------------------------------------------------------- */
+	--font-sans: "Inter", system-ui, sans-serif;
+	--font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+	--text-xs: 0.75rem; /* 12px — vote counts, author tags (mono) */
+	--text-sm: 0.875rem; /* 14px — note metadata */
+	--text-base: 1rem; /* 16px — note body */
+	--text-lg: 1.125rem; /* 18px — column body emphasis */
+	--text-xl: 1.5rem; /* 24px — column headers */
+	--text-2xl: 2rem; /* 32px — room title */
+	--text-3xl: 2.75rem; /* 44px — home / landing */
+}
+
+/* ==========================================================================
+   Base layer
+   ========================================================================== */
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	background-color: var(--color-surface-0);
+	color: var(--color-ink);
+	font-family: var(--font-sans);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }

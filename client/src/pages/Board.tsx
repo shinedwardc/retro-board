@@ -2,14 +2,7 @@ import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { arrayMove } from "@dnd-kit/sortable";
 import canvasConfetti from "canvas-confetti";
-import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useReducer,
-	useRef,
-	useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import Skeleton from "react-loading-skeleton";
 import { v4 as uuidv4 } from "uuid";
@@ -28,11 +21,7 @@ interface BoardProps {
 const CATEGORIES: NoteCategory[] = ["positive", "negative", "action"];
 
 const categoryLabel = (cat: NoteCategory) =>
-	cat === "positive"
-		? "Went Well"
-		: cat === "negative"
-			? "To Improve"
-			: "Actions";
+	cat === "positive" ? "Went Well" : cat === "negative" ? "To Improve" : "Actions";
 
 type NotesAction =
 	| { type: "set"; notes: Note[] }
@@ -49,9 +38,7 @@ function notesReducer(state: Note[], action: NotesAction): Note[] {
 		case "set":
 			return action.notes;
 		case "add":
-			return state.some((n) => n.id === action.note.id)
-				? state
-				: [...state, action.note];
+			return state.some((n) => n.id === action.note.id) ? state : [...state, action.note];
 		case "update":
 			return state.map((n) =>
 				n.id === action.noteId ? { ...n, content: action.updatedContent } : n,
@@ -68,15 +55,11 @@ function notesReducer(state: Note[], action: NotesAction): Note[] {
 				};
 			});
 		case "vote_set":
-			return state.map((n) =>
-				n.id === action.noteId ? { ...n, votes: action.votes } : n,
-			);
+			return state.map((n) => (n.id === action.noteId ? { ...n, votes: action.votes } : n));
 		case "delete":
 			return state.filter((n) => n.id !== action.noteId);
 		case "move":
-			return action.noteIds
-				.map((id) => state.find((n) => n.id === id))
-				.filter(Boolean) as Note[];
+			return action.noteIds.map((id) => state.find((n) => n.id === id)).filter(Boolean) as Note[];
 		case "clear":
 			return [];
 	}
@@ -136,9 +119,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		});
 
 		socket.on("user:joined", ({ userName }) => {
-			setUsers((prev) =>
-				prev.includes(userName) ? prev : [...prev, userName],
-			);
+			setUsers((prev) => (prev.includes(userName) ? prev : [...prev, userName]));
 			toast(`${userName} joined the room!`, { icon: "👋" });
 		});
 		socket.on("user:left", ({ userName }) => {
@@ -154,9 +135,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 			}
 			dispatch({ type: "vote_set", noteId, votes });
 		});
-		socket.on("note:deleted", ({ noteId }) =>
-			dispatch({ type: "delete", noteId }),
-		);
+		socket.on("note:deleted", ({ noteId }) => dispatch({ type: "delete", noteId }));
 		socket.on("note:moved", (noteIds) => dispatch({ type: "move", noteIds }));
 		socket.on("board:cleared", () => dispatch({ type: "clear" }));
 
@@ -199,13 +178,13 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		toast.success("Room ID copied to clipboard", {
 			position: "top-center",
 			style: {
-				border: "1px solid #6b7280",
+				border: "1px solid var(--color-ink-muted)",
 				padding: "12px",
-				color: "#6b7280",
+				color: "var(--color-ink-muted)",
 			},
 			iconTheme: {
-				primary: "#6b7280",
-				secondary: "#FFFAEE",
+				primary: "var(--color-ink-muted)",
+				secondary: "var(--color-surface-2)",
 			},
 		});
 	}, [roomCode]);
@@ -254,18 +233,9 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		setShowConfirm(false);
 	}, [roomCode]);
 
-	const positiveNotes = useMemo(
-		() => notes.filter((n) => n.category === "positive"),
-		[notes],
-	);
-	const negativeNotes = useMemo(
-		() => notes.filter((n) => n.category === "negative"),
-		[notes],
-	);
-	const actionNotes = useMemo(
-		() => notes.filter((n) => n.category === "action"),
-		[notes],
-	);
+	const positiveNotes = useMemo(() => notes.filter((n) => n.category === "positive"), [notes]);
+	const negativeNotes = useMemo(() => notes.filter((n) => n.category === "negative"), [notes]);
+	const actionNotes = useMemo(() => notes.filter((n) => n.category === "action"), [notes]);
 
 	const notesByCategory = {
 		positive: positiveNotes,
@@ -275,26 +245,26 @@ const Board = ({ session, onLeave }: BoardProps) => {
 
 	if (!isReady) {
 		return (
-			<div className="h-screen bg-yellow-50 p-3 sm:p-6 flex flex-col">
-				<div className="flex items-center justify-between mb-3 sm:mb-6">
-					<div className="flex gap-x-4 items-center">
+			<div className="flex h-screen flex-col bg-surface-0 p-3 sm:p-6">
+				<div className="mb-3 flex items-center justify-between sm:mb-6">
+					<div className="flex items-center gap-x-4">
 						<Skeleton width={112} height={28} />
 						<Skeleton width={128} height={24} borderRadius={8} />
 					</div>
-					<div className="flex gap-x-4 items-center">
+					<div className="flex items-center gap-x-4">
 						<Skeleton width={96} height={32} borderRadius={8} />
 						<Skeleton width={64} height={32} borderRadius={8} />
 					</div>
 				</div>
-				<div className="flex-1 min-h-0 flex justify-center w-full">
-					<div className="hidden md:grid grid-cols-3 gap-x-4 w-full max-w-6xl h-full">
+				<div className="flex min-h-0 w-full flex-1 justify-center">
+					<div className="hidden h-full w-full max-w-6xl grid-cols-3 gap-x-4 md:grid">
 						{[0, 1, 2].map((i) => (
 							<div key={i} className="h-full">
 								<Skeleton height="100%" borderRadius={12} />
 							</div>
 						))}
 					</div>
-					<div className="md:hidden w-full h-full">
+					<div className="h-full w-full md:hidden">
 						<Skeleton height="100%" borderRadius={12} />
 					</div>
 				</div>
@@ -313,22 +283,22 @@ const Board = ({ session, onLeave }: BoardProps) => {
 					onCancel={() => setShowConfirm(false)}
 				/>
 			)}
-			<div className="h-screen bg-yellow-50 p-3 sm:p-6 flex flex-col">
-				<div className="flex items-center justify-between mb-3 sm:mb-6 flex-wrap gap-y-2">
-					<div className="grid grid-flow-col gap-x-4 items-center">
-						<h1 className="text-xl font-bold text-gray-800">Retro Board</h1>
-						<p className="text-sm text-gray-500 bg-gray-200 px-2 py-1 rounded-lg">
+			<div className="flex h-screen flex-col bg-surface-0 p-3 sm:p-6">
+				<div className="mb-3 flex flex-wrap items-center justify-between gap-y-2 sm:mb-6">
+					<div className="grid grid-flow-col items-center gap-x-4">
+						<h1 className="font-bold text-ink-strong text-xl">Retro Board</h1>
+						<p className="rounded-lg bg-surface-1 px-2 py-1 text-ink-muted text-sm">
 							Room ID: <span className="font-mono">{roomCode}</span>
 						</p>
 					</div>
-					<div className="grid grid-flow-col gap-x-4 items-center">
+					<div className="grid grid-flow-col items-center gap-x-4">
 						{users && users.length > 0 && (
-							<div className="flex flex-row px-2 py-1 rounded-lg items-center">
+							<div className="flex flex-row items-center rounded-lg px-2 py-1">
 								<div className="flex flex-row gap-x-0.75">
 									{users.map((user) => (
 										<p
 											key={user}
-											className="w-8 h-8 flex items-center justify-center text-xs text-white rounded-full p-2"
+											className="flex h-8 w-8 items-center justify-center rounded-full p-2 text-white text-xs"
 											style={{ backgroundColor: getUserColor(user) }}
 										>
 											{user[0].toUpperCase()}
@@ -336,22 +306,21 @@ const Board = ({ session, onLeave }: BoardProps) => {
 									))}
 								</div>
 								<h3 className="ml-2 hidden sm:inline">
-									{users.length} {users.length === 1 ? "person" : "people"}{" "}
-									online
+									{users.length} {users.length === 1 ? "person" : "people"} online
 								</h3>
 							</div>
 						)}
 						<button
 							type="button"
 							onClick={handleCopyRoomId}
-							className="text-sm text-white p-2 bg-gray-500 rounded-lg hover:bg-gray-800"
+							className="rounded-lg bg-accent p-2 text-sm text-white hover:bg-accent-hover"
 						>
 							Copy Room ID
 						</button>
 						<button
 							type="button"
 							onClick={onLeave}
-							className="text-sm text-white p-2 bg-orange-500 rounded-lg hover:bg-gray-800"
+							className="rounded-lg bg-ink-muted p-2 text-sm text-white hover:bg-ink"
 						>
 							Leave
 						</button>
@@ -359,7 +328,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 							<button
 								type="button"
 								onClick={() => setShowConfirm(true)}
-								className="text-sm text-white p-2 bg-red-500 rounded-lg hover:bg-orange-700"
+								className="rounded-lg bg-line-improve p-2 text-sm text-white hover:brightness-90"
 							>
 								Clear Board
 							</button>
@@ -368,7 +337,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 				</div>
 
 				{/* Mobile tab bar */}
-				<div className="flex md:hidden gap-x-1 mb-2 shrink-0">
+				<div className="mb-2 flex shrink-0 gap-x-1 md:hidden">
 					{CATEGORIES.map((cat) => {
 						const count = notesByCategory[cat].length;
 						return (
@@ -376,7 +345,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 								key={cat}
 								type="button"
 								onClick={() => setActiveTab(cat)}
-								className={`flex-1 py-2 text-sm font-medium rounded-lg ${activeTab === cat ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-600"}`}
+								className={`flex-1 rounded-lg py-2 font-medium text-sm ${activeTab === cat ? "bg-accent text-white" : "bg-surface-1 text-ink-muted"}`}
 							>
 								{categoryLabel(cat)}
 								{count > 0 && ` (${count})`}
@@ -385,14 +354,11 @@ const Board = ({ session, onLeave }: BoardProps) => {
 					})}
 				</div>
 
-				<div className="flex-1 min-h-0 flex justify-center w-full">
+				<div className="flex min-h-0 w-full flex-1 justify-center">
 					{/* Mobile: one column at a time */}
-					<div className="md:hidden w-full h-full">
+					<div className="h-full w-full md:hidden">
 						{CATEGORIES.map((cat) => (
-							<div
-								key={cat}
-								className={`h-full ${activeTab === cat ? "block" : "hidden"}`}
-							>
+							<div key={cat} className={`h-full ${activeTab === cat ? "block" : "hidden"}`}>
 								<NoteColumn
 									notes={notesByCategory[cat]}
 									category={cat}
@@ -407,7 +373,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 					</div>
 
 					{/* Desktop: 3-column grid */}
-					<div className="hidden md:grid grid-cols-3 gap-x-4 w-full max-w-6xl h-full">
+					<div className="hidden h-full w-full max-w-6xl grid-cols-3 gap-x-4 md:grid">
 						<NoteColumn
 							notes={positiveNotes}
 							category="positive"
