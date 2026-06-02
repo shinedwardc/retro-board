@@ -76,6 +76,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 	const [showConfirm, setShowConfirm] = useState(false);
 	const [activeTab, setActiveTab] = useState<NoteCategory>("positive");
 	const [isReady, setIsReady] = useState(false);
+	const [isWaking, setIsWaking] = useState(false);
 
 	// Lets handleDragEnd read the latest notes without being in its dep array
 	const notesRef = useRef(notes);
@@ -83,6 +84,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 
 	useEffect(() => {
 		socket.once("connect", () => {
+			setIsWaking(false);
 			if (session.intent === "create") {
 				socket.emit("room:create", { roomCode, userName });
 			} else {
@@ -95,7 +97,15 @@ const Board = ({ session, onLeave }: BoardProps) => {
 			}
 		});
 
+		// A failed attempt usually just means the free-tier server is cold-starting.
+		// Keep retrying (see reconnection config in socket.ts) and surface a
+		// "waking up" state instead of bouncing the user on the first error.
 		socket.on("connect_error", () => {
+			setIsWaking(true);
+		});
+
+		// Only give up once Socket.IO has exhausted its reconnection attempts.
+		socket.io.on("reconnect_failed", () => {
 			onLeaveRef.current();
 			toast.error("Could not connect to server. Please try again.");
 		});
@@ -141,6 +151,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 
 		return () => {
 			socket.off("connect_error");
+			socket.io.off("reconnect_failed");
 			socket.off("room:error");
 			socket.off("room:created");
 			socket.off("room:state");
@@ -246,6 +257,11 @@ const Board = ({ session, onLeave }: BoardProps) => {
 	if (!isReady) {
 		return (
 			<div className="flex h-screen flex-col bg-surface-0 p-3 sm:p-6">
+				{isWaking && (
+					<div className="mb-3 rounded-lg bg-surface-1 px-3 py-2 text-center text-ink-muted text-sm">
+						Waking up the server — this can take up to a minute…
+					</div>
+				)}
 				<div className="mb-3 flex items-center justify-between sm:mb-6">
 					<div className="flex items-center gap-x-4">
 						<Skeleton width={112} height={28} />
