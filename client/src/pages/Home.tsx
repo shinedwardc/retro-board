@@ -1,15 +1,17 @@
 import { useState } from "react";
 import type { Session } from "../types/index";
 import generateRoomCode from "../utils/generateRoomCode";
+import { USERNAME_KEY } from "../utils/session";
 
 interface HomeProps {
 	onJoin: (session: Session) => void;
+	initialRoomCode?: string;
 }
 
-const Home = ({ onJoin }: HomeProps) => {
-	const [tab, setTab] = useState<"create" | "join">("create");
-	const [username, setUsername] = useState("");
-	const [roomCode, setRoomCode] = useState("");
+const Home = ({ onJoin, initialRoomCode }: HomeProps) => {
+	const [tab, setTab] = useState<"create" | "join">(initialRoomCode ? "join" : "create");
+	const [username, setUsername] = useState(() => localStorage.getItem(USERNAME_KEY) ?? "");
+	const [roomCode, setRoomCode] = useState(initialRoomCode ?? "");
 
 	const handleCreate = () => {
 		if (!username.trim()) return;
