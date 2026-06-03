@@ -1,6 +1,5 @@
 import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
-import { arrayMove } from "@dnd-kit/sortable";
 import canvasConfetti from "canvas-confetti";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -11,6 +10,7 @@ import NoteColumn from "../components/NoteColumn";
 import socket from "../socket";
 import type { Note, NoteCategory, Session } from "../types/index";
 import { getUserColor } from "../utils/colors";
+import { byRank, computeRankForDrop, rankForNewNote } from "../utils/ordering";
 import "react-loading-skeleton/dist/skeleton.css";
 
 interface BoardProps {
@@ -30,7 +30,7 @@ type NotesAction =
 	| { type: "vote_toggle"; noteId: string; userName: string }
 	| { type: "vote_set"; noteId: string; votes: string[] }
 	| { type: "delete"; noteId: string }
-	| { type: "move"; noteIds: string[] }
+	| { type: "move"; noteId: string; rank: string }
 	| { type: "clear" };
 
 function notesReducer(state: Note[], action: NotesAction): Note[] {
@@ -59,7 +59,7 @@ function notesReducer(state: Note[], action: NotesAction): Note[] {
 		case "delete":
 			return state.filter((n) => n.id !== action.noteId);
 		case "move":
-			return action.noteIds.map((id) => state.find((n) => n.id === id)).filter(Boolean) as Note[];
+			return state.map((n) => (n.id === action.noteId ? { ...n, rank: action.rank } : n));
 		case "clear":
 			return [];
 	}
@@ -146,7 +146,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 			dispatch({ type: "vote_set", noteId, votes });
 		});
 		socket.on("note:deleted", ({ noteId }) => dispatch({ type: "delete", noteId }));
-		socket.on("note:moved", (noteIds) => dispatch({ type: "move", noteIds }));
+		socket.on("note:moved", ({ noteId, rank }) => dispatch({ type: "move", noteId, rank }));
 		socket.on("board:cleared", () => dispatch({ type: "clear" }));
 
 		return () => {
@@ -172,14 +172,19 @@ const Board = ({ session, onLeave }: BoardProps) => {
 			const { active, over } = event;
 			if (!over || active.id === over.id) return;
 
-			const current = notesRef.current;
-			const oldIndex = current.findIndex((n) => n.id === active.id);
-			const newIndex = current.findIndex((n) => n.id === over.id);
-			const reordered = arrayMove(current, oldIndex, newIndex);
-			const noteIds = reordered.map((n) => n.id);
+			const activeId = String(active.id);
+			const overId = String(over.id);
+			const note = notesRef.current.find((n) => n.id === activeId);
+			if (!note) return;
 
-			dispatch({ type: "move", noteIds });
-			socket.emit("note:move", { roomCode, noteIds });
+			// Only the dragged note's rank changes — computed from its new neighbors
+			// within its own column.
+			const column = notesRef.current.filter((n) => n.category === note.category).sort(byRank);
+			const rank = computeRankForDrop(column, activeId, overId);
+			if (rank === null) return;
+
+			dispatch({ type: "move", noteId: activeId, rank });
+			socket.emit("note:move", { roomCode, noteId: activeId, rank });
 		},
 		[roomCode],
 	);
@@ -202,14 +207,16 @@ const Board = ({ session, onLeave }: BoardProps) => {
 
 	const createNote = useCallback(
 		(input: string, category: NoteCategory) => {
-			const note: Omit<Note, "room_id" | "position" | "created_at"> = {
+			const column = notesRef.current.filter((n) => n.category === category).sort(byRank);
+			const note: Omit<Note, "created_at"> = {
 				id: uuidv4(),
 				content: input.trim(),
 				category,
 				author: userName,
 				votes: [],
+				rank: rankForNewNote(column),
 			};
-			dispatch({ type: "add", note: { ...note, room_id: "", position: 0 } });
+			dispatch({ type: "add", note });
 			socket.emit("note:create", { roomCode, note });
 		},
 		[roomCode, userName],
@@ -244,9 +251,18 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		setShowConfirm(false);
 	}, [roomCode]);
 
-	const positiveNotes = useMemo(() => notes.filter((n) => n.category === "positive"), [notes]);
-	const negativeNotes = useMemo(() => notes.filter((n) => n.category === "negative"), [notes]);
-	const actionNotes = useMemo(() => notes.filter((n) => n.category === "action"), [notes]);
+	const positiveNotes = useMemo(
+		() => notes.filter((n) => n.category === "positive").sort(byRank),
+		[notes],
+	);
+	const negativeNotes = useMemo(
+		() => notes.filter((n) => n.category === "negative").sort(byRank),
+		[notes],
+	);
+	const actionNotes = useMemo(
+		() => notes.filter((n) => n.category === "action").sort(byRank),
+		[notes],
+	);
 
 	const notesByCategory = {
 		positive: positiveNotes,

@@ -61,7 +61,7 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 			if (!users.includes(userName)) users.push(userName);
 
 			const notesQuery = await pool.query<Note>(
-				`SELECT * FROM notes WHERE room_id = $1 ORDER BY position ASC, created_at ASC`,
+				`SELECT * FROM notes WHERE room_id = $1 ORDER BY category ASC, rank ASC, id ASC`,
 				[socket.data.roomDbId],
 			);
 			socket.emit("room:state", {
@@ -114,7 +114,7 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 			}
 
 			const notesQuery = await pool.query<Note>(
-				`SELECT * FROM notes WHERE room_id = $1 ORDER BY position ASC, created_at ASC`,
+				`SELECT * FROM notes WHERE room_id = $1 ORDER BY category ASC, rank ASC, id ASC`,
 				[socket.data.roomDbId],
 			);
 			const notes = notesQuery.rows;
@@ -149,16 +149,14 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 
 	socket.on("note:create", async ({ roomCode, note }) => {
 		try {
-			const countResult = await pool.query<{ count: string }>(
-				`SELECT COUNT(*) FROM notes WHERE room_id = $1`,
-				[socket.data.roomDbId],
-			);
-			const position = parseInt(countResult.rows[0].count, 10);
+			// rank is a client-computed fractional index that appends the note to the
+			// end of its column. Duplicate ranks (concurrent creates) are tolerated and
+			// resolved at read time by the (category, rank, id) sort order.
 			const result = await pool.query<Note>(
-				`INSERT INTO notes (id, room_id, content, category, author, votes, position)
+				`INSERT INTO notes (id, room_id, content, category, author, votes, rank)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING *`,
-				[note.id, socket.data.roomDbId, note.content, note.category, note.author, [], position],
+				[note.id, socket.data.roomDbId, note.content, note.category, note.author, [], note.rank],
 			);
 
 			const savedNote = result.rows[0];
@@ -238,21 +236,20 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 		}
 	});
 
-	socket.on("note:move", async ({ roomCode, noteIds }) => {
+	socket.on("note:move", async ({ roomCode, noteId, rank }) => {
 		try {
-			await Promise.all(
-				noteIds.map((id, index) =>
-					pool.query(`UPDATE notes SET position = $1 WHERE id = $2 AND room_id = $3`, [
-						index,
-						id,
-						socket.data.roomDbId,
-					]),
-				),
-			);
+			// A move rewrites only the dragged note's fractional rank — a single-row
+			// update, so concurrent moves of different notes never interfere and there
+			// is no read-modify-write to serialize.
+			await pool.query(`UPDATE notes SET rank = $1 WHERE id = $2 AND room_id = $3`, [
+				rank,
+				noteId,
+				socket.data.roomDbId,
+			]);
 
-			io.to(roomCode).emit("note:moved", noteIds);
+			io.to(roomCode).emit("note:moved", { noteId, rank });
 		} catch (err) {
-			console.error("Error moving notes:", err);
+			console.error("Error moving note:", err);
 		}
 	});
 

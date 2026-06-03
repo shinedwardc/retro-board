@@ -1,13 +1,15 @@
 export type NoteCategory = "positive" | "negative" | "action";
 
+// Note as the client uses it. Unlike the server, there is no room_id: the client
+// only ever works within one room and never reads the room's DB id, so the field
+// is omitted rather than carried as a placeholder.
 export interface Note {
 	id: string;
-	room_id: string;
 	content: string;
 	category: NoteCategory;
 	author: string;
 	votes: string[];
-	position: number;
+	rank: string;
 	created_at?: string;
 }
 
@@ -27,20 +29,17 @@ export interface ServerToClientEvents {
 	"note:updated": (data: { noteId: string; updatedContent: string }) => void;
 	"note:voted": (data: { noteId: string; votes: string[]; incrementingVote: boolean }) => void;
 	"note:deleted": (data: { noteId: string }) => void;
-	"note:moved": (noteIds: string[]) => void;
+	"note:moved": (data: { noteId: string; rank: string }) => void;
 	"board:cleared": () => void;
 }
 
 export interface ClientToServerEvents {
 	"room:create": (data: { roomCode: string; userName: string }) => void;
 	"room:join": (data: { roomCode: string; userName: string; token?: string }) => void;
-	"note:create": (data: {
-		roomCode: string;
-		note: Omit<Note, "room_id" | "position" | "created_at">;
-	}) => void;
+	"note:create": (data: { roomCode: string; note: Omit<Note, "created_at"> }) => void;
 	"note:update": (data: { roomCode: string; noteId: string; updatedContent: string }) => void;
 	"note:vote": (data: { roomCode: string; noteId: string }) => void;
 	"note:delete": (data: { roomCode: string; noteId: string }) => void;
-	"note:move": (data: { roomCode: string; noteIds: string[] }) => void;
+	"note:move": (data: { roomCode: string; noteId: string; rank: string }) => void;
 	"board:clear": (data: { roomCode: string }) => void;
 }
