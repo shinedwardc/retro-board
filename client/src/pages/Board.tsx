@@ -9,7 +9,7 @@ import ConfirmDialog from "../components/confirmDialog";
 import NoteColumn from "../components/NoteColumn";
 import socket from "../socket";
 import type { Note, NoteCategory, Session } from "../types/index";
-import { getUserColor } from "../utils/colors";
+import getUserColor from "../utils/colors";
 import { byRank, computeRankForDrop, rankForNewNote } from "../utils/ordering";
 import "react-loading-skeleton/dist/skeleton.css";
 

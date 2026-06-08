@@ -5,10 +5,11 @@ import { USERNAME_KEY } from "../utils/session";
 
 interface HomeProps {
 	onJoin: (session: Session) => void;
+	onRoomCodeError: () => void;
 	initialRoomCode?: string;
 }
 
-const Home = ({ onJoin, initialRoomCode }: HomeProps) => {
+const Home = ({ onJoin, onRoomCodeError, initialRoomCode }: HomeProps) => {
 	const [tab, setTab] = useState<"create" | "join">(initialRoomCode ? "join" : "create");
 	const [username, setUsername] = useState(() => localStorage.getItem(USERNAME_KEY) ?? "");
 	const [roomCode, setRoomCode] = useState(initialRoomCode ?? "");
@@ -24,8 +25,13 @@ const Home = ({ onJoin, initialRoomCode }: HomeProps) => {
 
 	const handleJoin = () => {
 		if (!username.trim() || !roomCode.trim()) return;
+		const normalized = roomCode.trim().toUpperCase();
+		if (!/^[A-Z0-9]{6,8}$/.test(normalized)) {
+			onRoomCodeError();
+			return;
+		} 
 		onJoin({
-			roomCode: roomCode.trim().toUpperCase(),
+			roomCode: normalized,
 			userName: username.trim(),
 			intent: "join",
 		});

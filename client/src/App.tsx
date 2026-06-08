@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Toaster } from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast";
 import Board from "./pages/Board";
 import Home from "./pages/Home";
 import type { Session } from "./types/index";
@@ -21,6 +21,10 @@ const App = () => {
 		setSession(next);
 	};
 
+	const handleCodeError = () => {
+		toast.error("Invalid room code!");
+	}
+
 	const handleLeave = () => {
 		window.history.pushState(null, "", "/");
 		setSession(null);
@@ -39,6 +43,7 @@ const App = () => {
 				<Home
 					key={pendingRoomCode ?? "home"}
 					onJoin={handleJoin}
+					onRoomCodeError={handleCodeError}
 					initialRoomCode={pendingRoomCode ?? undefined}
 				/>
 			)}

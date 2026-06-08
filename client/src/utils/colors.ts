@@ -10,10 +10,15 @@ const COLORS: string[] = [
 	"var(--color-user-8)",
 ];
 
-export const getUserColor = (userName: string): string => {
+const getUserColor = (userName: string): string => {
+	if (!userName.length) {
+		throw new Error("Username cannot be empty");
+	}
 	let hash = 5381;
 	for (let i = 0; i < userName.length; i++) {
 		hash = (hash * 33) ^ userName.charCodeAt(i);
 	}
 	return COLORS[(hash >>> 0) % COLORS.length];
 };
+
+export default getUserColor;
