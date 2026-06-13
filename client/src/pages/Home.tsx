@@ -29,7 +29,7 @@ const Home = ({ onJoin, onRoomCodeError, initialRoomCode }: HomeProps) => {
 		if (!/^[A-Z0-9]{6,8}$/.test(normalized)) {
 			onRoomCodeError();
 			return;
-		} 
+		}
 		onJoin({
 			roomCode: normalized,
 			userName: username.trim(),

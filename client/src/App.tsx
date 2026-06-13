@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { toast, Toaster } from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast";
 import Board from "./pages/Board";
 import Home from "./pages/Home";
 import type { Session } from "./types/index";
@@ -23,7 +23,7 @@ const App = () => {
 
 	const handleCodeError = () => {
 		toast.error("Invalid room code!");
-	}
+	};
 
 	const handleLeave = () => {
 		window.history.pushState(null, "", "/");
