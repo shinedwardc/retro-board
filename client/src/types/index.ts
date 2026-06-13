@@ -28,7 +28,7 @@ export interface ServerToClientEvents {
 	"note:created": (note: Note) => void;
 	"note:updated": (data: { noteId: string; updatedContent: string }) => void;
 	"note:voted": (data: { noteId: string; votes: string[]; incrementingVote: boolean }) => void;
-	"note:deleted": (data: { noteId: string }) => void;
+	"note:deleted": (data: { noteId: string; reason?: "save-failed" }) => void;
 	"note:moved": (data: { noteId: string; rank: string }) => void;
 	"board:cleared": () => void;
 }

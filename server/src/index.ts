@@ -19,6 +19,7 @@ const io = new Server<
 		origin: process.env.CLIENT_URL || "http://localhost:5173",
 		methods: ["GET", "POST"],
 	},
+	transports: ["websocket", "polling"],
 });
 
 app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));

@@ -148,78 +148,91 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 	});
 
 	socket.on("note:create", async ({ roomCode, note }) => {
+		const savedNote: Note = {
+			id: note.id,
+			room_id: socket.data.roomDbId as string,
+			content: note.content,
+			category: note.category,
+			author: note.author,
+			votes: [],
+			rank: note.rank,
+			created_at: new Date().toISOString(),
+		};
+		io.to(roomCode).emit("note:created", savedNote);
+		console.log(`Note created in room ${roomCode} by ${socket.data.username}`);
+
 		try {
-			// rank is a client-computed fractional index that appends the note to the
-			// end of its column. Duplicate ranks (concurrent creates) are tolerated and
-			// resolved at read time by the (category, rank, id) sort order.
-			const result = await pool.query<Note>(
+			await pool.query(
 				`INSERT INTO notes (id, room_id, content, category, author, votes, rank)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                RETURNING *`,
+                VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 				[note.id, socket.data.roomDbId, note.content, note.category, note.author, [], note.rank],
 			);
-
-			const savedNote = result.rows[0];
-			io.to(roomCode).emit("note:created", savedNote);
-			console.log(`Note created in room ${roomCode} by ${socket.data.username}`);
 		} catch (err) {
 			console.error("Error creating note:", err);
+			// Compensating broadcast: the optimistic note:created already put this note
+			// on every board, but the INSERT failed. Roll it back, flagged so clients
+			// can distinguish this from a real user-initiated delete.
+			io.to(roomCode).emit("note:deleted", { noteId: note.id, reason: "save-failed" });
 		}
 	});
 
 	socket.on("note:update", async ({ roomCode, noteId, updatedContent }) => {
+		// Optimistic broadcast: emit before persisting (payload is fully known from input).
+		io.to(roomCode).emit("note:updated", { noteId, updatedContent });
+		console.log(`Note updated in room ${roomCode} by ${socket.data.username}`);
+
 		try {
 			await pool.query(`UPDATE notes SET content = $1 WHERE id = $2 AND room_id = $3`, [
 				updatedContent,
 				noteId,
 				socket.data.roomDbId,
 			]);
-
-			io.to(roomCode).emit("note:updated", { noteId, updatedContent });
-			console.log(`Note updated in room ${roomCode} by ${socket.data.username}`);
 		} catch (err) {
 			console.error("Error updating note:", err);
 		}
 	});
 
 	socket.on("note:vote", async ({ roomCode, noteId }) => {
+		const username = socket.data.username as string;
 		try {
-			const result = await pool.query<{ votes: string[] }>(
-				`SELECT votes FROM notes WHERE id = $1 AND room_id = $2`,
-				[noteId, socket.data.roomDbId],
+			// Atomic toggle: one UPDATE reads and rewrites the votes array under a row
+			// lock, so concurrent votes on the same note serialize instead of racing
+			// (no lost updates). RETURNING hands back the authoritative new state.
+			const result = await pool.query<{ votes: string[]; incrementing: boolean }>(
+				`UPDATE notes 
+				SET votes = 
+				CASE
+					WHEN $3 = ANY(votes) THEN array_remove(votes, $3)
+					ELSE array_append(votes, $3)
+				END
+				WHERE id = $1 AND room_id = $2
+				RETURNING votes, ($3 = ANY(votes)) AS incrementing
+				`,
+				[noteId, socket.data.roomDbId, username],
 			);
-			const votes = result.rows[0].votes;
-			const incrementingVote = !votes.includes(socket.data.username as string);
-			const updatedVotes = incrementingVote
-				? [...votes, socket.data.username as string]
-				: votes.filter((voter) => voter !== socket.data.username);
 
-			await pool.query(`UPDATE notes SET votes = $1 WHERE id = $2 AND room_id = $3`, [
-				updatedVotes,
-				noteId,
-				socket.data.roomDbId,
-			]);
-
+			const { votes, incrementing } = result.rows[0];
 			io.to(roomCode).emit("note:voted", {
 				noteId,
-				votes: updatedVotes,
-				incrementingVote,
+				votes,
+				incrementingVote: incrementing,
 			});
-			console.log(`Note voted in room ${roomCode} by ${socket.data.username}`);
+			console.log(`Note voted in room ${roomCode} by ${username}`);
 		} catch (err) {
 			console.error("Error voting for note:", err);
 		}
 	});
 
 	socket.on("note:delete", async ({ roomCode, noteId }) => {
+		// Optimistic broadcast: emit before persisting (payload is fully known from input).
+		io.to(roomCode).emit("note:deleted", { noteId });
+		console.log(`Note deleted in room ${roomCode} by ${socket.data.username}`);
+
 		try {
 			await pool.query(`DELETE FROM notes WHERE id = $1 AND room_id = $2`, [
 				noteId,
 				socket.data.roomDbId,
 			]);
-
-			io.to(roomCode).emit("note:deleted", { noteId });
-			console.log(`Note deleted in room ${roomCode} by ${socket.data.username}`);
 		} catch (err) {
 			console.error("Error deleting note:", err);
 		}
@@ -227,27 +240,25 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 
 	socket.on("board:clear", async ({ roomCode }) => {
 		if (!socket.data.isCreator) return;
+		// Optimistic broadcast: emit before persisting (creator already authorized above).
+		io.to(roomCode).emit("board:cleared");
+		console.log(`Board cleared in room ${roomCode} by ${socket.data.username}`);
+
 		try {
 			await pool.query(`DELETE FROM notes WHERE room_id = $1`, [socket.data.roomDbId]);
-			io.to(roomCode).emit("board:cleared");
-			console.log(`Board cleared in room ${roomCode} by ${socket.data.username}`);
 		} catch (err) {
 			console.error("Error clearing board:", err);
 		}
 	});
 
 	socket.on("note:move", async ({ roomCode, noteId, rank }) => {
+		io.to(roomCode).emit("note:moved", { noteId, rank });
 		try {
-			// A move rewrites only the dragged note's fractional rank — a single-row
-			// update, so concurrent moves of different notes never interfere and there
-			// is no read-modify-write to serialize.
 			await pool.query(`UPDATE notes SET rank = $1 WHERE id = $2 AND room_id = $3`, [
 				rank,
 				noteId,
 				socket.data.roomDbId,
 			]);
-
-			io.to(roomCode).emit("note:moved", { noteId, rank });
 		} catch (err) {
 			console.error("Error moving note:", err);
 		}

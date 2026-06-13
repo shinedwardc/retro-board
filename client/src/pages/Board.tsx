@@ -145,7 +145,12 @@ const Board = ({ session, onLeave }: BoardProps) => {
 			}
 			dispatch({ type: "vote_set", noteId, votes });
 		});
-		socket.on("note:deleted", ({ noteId }) => dispatch({ type: "delete", noteId }));
+		socket.on("note:deleted", ({ noteId, reason }) => {
+			dispatch({ type: "delete", noteId });
+			if (reason === "save-failed") {
+				toast.error("Couldn't save your note — please try again");
+			}
+		});
 		socket.on("note:moved", ({ noteId, rank }) => dispatch({ type: "move", noteId, rank }));
 		socket.on("board:cleared", () => dispatch({ type: "clear" }));
 
