@@ -84,54 +84,6 @@ Board.tsx ──emit──▶ socket.ts ──ws──▶ handlers.ts ──broa
 
 User presence is tracked in-memory on the server (lost on restart); rooms and notes persist in PostgreSQL.
 
-## Socket Events
-
-| Event | Direction | Payload |
-|---|---|---|
-| `room:create` | client → server | `{ roomCode, userName }` |
-| `room:created` | server → client | `{ token }` (creator JWT) |
-| `room:join` | client → server | `{ roomCode, userName, token? }` |
-| `room:state` | server → client | `{ notes, users, isCreator }` |
-| `room:error` | server → client | `{ message }` |
-| `user:joined` / `user:left` | server → room | `{ userName }` |
-| `note:create` | client → server | `{ roomCode, note }` |
-| `note:created` | server → room | note object |
-| `note:update` | client → server | `{ roomCode, noteId, updatedContent }` |
-| `note:updated` | server → room | `{ noteId, updatedContent }` |
-| `note:vote` | client → server | `{ roomCode, noteId }` |
-| `note:voted` | server → room | `{ noteId, votes, incrementingVote }` |
-| `note:delete` | client → server | `{ roomCode, noteId }` |
-| `note:deleted` | server → room | `{ noteId, reason? }` (`reason: "save-failed"` rolls back an optimistic create) |
-| `note:move` | client → server | `{ roomCode, noteId, rank }` |
-| `note:moved` | server → room | `{ noteId, rank }` |
-| `board:clear` | client → server | `{ roomCode }` (creator only) |
-| `board:cleared` | server → room | — |
-
-## Database Schema
-
-**rooms**
-
-| Column | Type | Description |
-|---|---|---|
-| `id` | UUID (PK) | Auto-generated room identifier |
-| `code` | varchar(8) | Unique shareable room code |
-| `created_at` | timestamptz | Creation timestamp |
-
-**notes**
-
-| Column | Type | Description |
-|---|---|---|
-| `id` | UUID (PK) | Auto-generated note identifier |
-| `room_id` | UUID (FK) | Parent room (cascade delete) |
-| `content` | text | Note body |
-| `category` | varchar(20) | `positive`, `negative`, or `action` |
-| `author` | varchar(50) | Display name of note creator |
-| `votes` | text[] | Display names of users who voted |
-| `rank` | text | Fractional-index sort key within `(room_id, category)` |
-| `created_at` | timestamptz | Creation timestamp |
-
-Migrations live in `server/migrations/` (node-pg-migrate). Run `npm run migrate` after pulling changes that add migration files.
-
 ## Available Scripts
 
 ### Server (`/server`)
