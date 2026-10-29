@@ -105,6 +105,10 @@ Tailwind CSS 4 (CSS-first). The global stylesheet `client/src/index.css` defines
 ### Linting
 Both packages use Biome (not ESLint/Prettier), configured by a single shared `biome.json` at the repo root (auto-discovered by Biome's upward config search). It enables Tailwind directive parsing (`@theme`), tab indent, width 100, and the `useSortedClasses` rule. Run `npm run check:fix` to auto-format. CI runs `npm run check` before deploying.
 
+## Self-hosting
+
+`docker-compose.yml` runs the stack on one machine: `web` (Caddy serving the built client from `client/Dockerfile` + `client/Caddyfile`, proxying `/socket.io` and `/health`, automatic HTTPS), `server` (runs `npm run migrate`, then starts), `postgres`, and `mini-redis` (built from its GitHub `main`). Config comes from a root `.env` (see `.env.example`). Setup steps: `docs/self-hosting.md`.
+
 ## CI/CD
 
 GitHub Actions (`.github/workflows/ci.yml`):

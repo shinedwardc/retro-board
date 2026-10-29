@@ -1,0 +1,64 @@
+# Runs the whole app on one machine: `docker compose up -d --build`
+# Reads DOMAIN, POSTGRES_PASSWORD and JWT_SECRET from .env (copy .env.example)
+services:
+  web:
+    build:
+      context: ./client
+      args:
+        VITE_SERVER_URL: https://${DOMAIN:?set DOMAIN in .env}
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data # issued certificates; losing this means re-requesting them
+      - caddy_config:/config
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  server:
+    build: ./server
+    environment:
+      PORT: 3000
+      CLIENT_URL: https://${DOMAIN}
+      DATABASE_URL: postgres://retro:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/retro
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      REDIS_URL: redis://mini-redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mini-redis:
+        condition: service_started
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: retro
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: retro
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retro -d retro"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Built straight from the mini-redis GitHub repo. Set MINI_REDIS_CONTEXT=../mini-redis
+  # to build from a local checkout instead.
+  mini-redis:
+    build: ${MINI_REDIS_CONTEXT:-https://github.com/shinedwardc/mini-redis.git#main}
+    restart: unless-stopped
+
+# Postgres and mini-redis publish no ports: only the server can reach them, over
+# Compose's private network. mini-redis has no password, so keep it that way.
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

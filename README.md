@@ -124,3 +124,5 @@ GitHub Actions (`.github/workflows/ci.yml`) runs three parallel jobs on every pu
 
 - **Server** → [retro-board-izpo.onrender.com](https://retro-board-izpo.onrender.com) (Render)
 - **Client** → [retroflowboard.vercel.app](https://retroflowboard.vercel.app) (Vercel)
+
+**Self-hosting:** `docker-compose.yml` runs the whole stack (Caddy + server + Postgres + mini-redis) on one machine behind your own domain. See [docs/self-hosting.md](docs/self-hosting.md).
