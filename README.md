@@ -60,6 +60,7 @@ The client connects to `http://localhost:3000` by default, so no client `.env` i
 | `JWT_SECRET` | Yes | — | Signs room-creator tokens |
 | `PORT` | No | `3001` | Set to `3000` locally to match the client's default server URL |
 | `CLIENT_URL` | No | `http://localhost:5173` | Allowed CORS origin |
+| `REDIS_URL` | No | — | e.g. `redis://localhost:6379`. Stores room presence in Redis / [mini-redis](https://github.com/shinedwardc/mini-redis) instead of server memory |
 
 **Client** (`client/.env`):
 
