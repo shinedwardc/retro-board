@@ -66,13 +66,3 @@ jobs:
       - name: Build client
         run: npm run build
         working-directory: client
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [lint, typecheck-server, typecheck-client]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Deploy to Render
-        run: curl "${{ secrets.RENDER_DEPLOY_HOOK }}"
-      - name: Deploy to Vercel
-        run: curl "${{ secrets.VERCEL_DEPLOY_HOOK }}"

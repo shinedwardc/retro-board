@@ -1,0 +1,17 @@
+# Caddy gets and renews the HTTPS certificate for $DOMAIN automatically
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Socket.IO and the health check go to the Node server
+	@server path /socket.io/* /health
+	handle @server {
+		reverse_proxy server:3000
+	}
+
+	# Everything else is the built React app; unknown paths fall back to index.html
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

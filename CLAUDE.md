@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Real-time collaborative retrospective board. Users create/join rooms and add sticky notes across three columns (Went Well, To Improve, Action Items) with live sync via Socket.IO.
 
-**Live:** Vercel (client) + Render (server)
+**Hosting:** self-hosted with Docker Compose (see Self-hosting below)
 
 ## Structure
 
@@ -103,13 +103,16 @@ Tailwind CSS 4 (CSS-first). The global stylesheet `client/src/index.css` defines
 - **Type scale:** `text-xs` (12px) → `text-3xl` (44px)
 
 ### Linting
-Both packages use Biome (not ESLint/Prettier), configured by a single shared `biome.json` at the repo root (auto-discovered by Biome's upward config search). It enables Tailwind directive parsing (`@theme`), tab indent, width 100, and the `useSortedClasses` rule. Run `npm run check:fix` to auto-format. CI runs `npm run check` before deploying.
+Both packages use Biome (not ESLint/Prettier), configured by a single shared `biome.json` at the repo root (auto-discovered by Biome's upward config search). It enables Tailwind directive parsing (`@theme`), tab indent, width 100, and the `useSortedClasses` rule. Run `npm run check:fix` to auto-format. CI runs the Biome check on every push.
+
+## Self-hosting
+
+`docker-compose.yml` runs the stack on one machine: `web` (Caddy serving the built client from `client/Dockerfile` + `client/Caddyfile`, proxying `/socket.io` and `/health`, automatic HTTPS), `server` (runs `npm run migrate`, then starts), `postgres`, and `mini-redis` (built from its GitHub `main`). Config comes from a root `.env` (see `.env.example`). Setup steps: `docs/self-hosting.md`.
 
 ## CI/CD
 
 GitHub Actions (`.github/workflows/ci.yml`):
 1. `lint` — one job runs Biome once over both apps via the shared root config (`biome check client/src server/src`)
 2. `typecheck-server` and `typecheck-client` — per-app typecheck (client also builds), in parallel
-3. On `main` after all three pass: trigger Render deploy hook (server) and Vercel deploy hook (client) via `curl`
 
-Secrets required: `RENDER_DEPLOY_HOOK`, `VERCEL_DEPLOY_HOOK`
+CI does not deploy; deploys are a manual `git pull && docker compose up -d --build` on the server.

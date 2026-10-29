@@ -2,8 +2,6 @@
 
 A real-time collaborative retrospective board. One person creates a room and shares an 8-character code; everyone else joins with a display name — no accounts, no sign-up. Notes, votes, edits, and drag-and-drop reorders sync live to every participant over WebSockets.
 
-**Live demo:** https://retroflowboard.vercel.app
-
 ## Why
 
 Running a retro shouldn't require licenses, logins, or a 10-minute setup. Most retro tools front-load friction — create an account, invite teammates by email, pick a plan — before anyone writes a single note. Retro Board strips that away: the only identity is the name you type when you join, and the only barrier to entry is a room code. The trade-off is deliberate — sessions are lightweight and disposable, with just enough persistence (PostgreSQL-backed rooms and notes) that a dropped connection or page refresh doesn't lose the board.
@@ -120,7 +118,6 @@ User presence is tracked in-memory on the server (lost on restart); rooms and no
 
 ## Deployment
 
-GitHub Actions (`.github/workflows/ci.yml`) runs three parallel jobs on every push — a single Biome check over both apps (shared root `biome.json`), a server typecheck, and a client typecheck + build. On `main`, once all three pass, deploy hooks trigger:
+`docker-compose.yml` runs the whole stack (Caddy + server + Postgres + mini-redis) on one machine behind your own domain. See [docs/self-hosting.md](docs/self-hosting.md).
 
-- **Server** → [retro-board-izpo.onrender.com](https://retro-board-izpo.onrender.com) (Render)
-- **Client** → [retroflowboard.vercel.app](https://retroflowboard.vercel.app) (Vercel)
+GitHub Actions (`.github/workflows/ci.yml`) runs three parallel jobs on every push — a single Biome check over both apps (shared root `biome.json`), a server typecheck, and a client typecheck + build. It does not deploy.
