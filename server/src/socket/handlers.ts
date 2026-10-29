@@ -2,6 +2,7 @@ import "dotenv/config";
 import jwt from "jsonwebtoken";
 import type { Server, Socket } from "socket.io";
 import pool from "../db.js";
+import { addUser, getUsers, removeUser } from "../presence.js";
 import type {
 	ClientToServerEvents,
 	Note,
@@ -23,13 +24,9 @@ type AppSocket = Socket<
 	SocketData
 >;
 
-const roomUsers = new Map<string, string[]>();
-
 export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 	socket.on("room:create", async ({ roomCode, userName }) => {
 		socket.join(roomCode);
-		socket.data.username = userName;
-		socket.data.roomCode = roomCode;
 
 		try {
 			const insertResult = await pool.query<{ id: string; code: string }>(
@@ -56,9 +53,10 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 			);
 			socket.emit("room:created", { token: creatorToken });
 
-			if (!roomUsers.has(roomCode)) roomUsers.set(roomCode, []);
-			const users = roomUsers.get(roomCode) as string[];
-			if (!users.includes(userName)) users.push(userName);
+			await addUser(roomCode, userName); // brand-new room, so the name is always free
+			socket.data.username = userName;
+			socket.data.roomCode = roomCode;
+			const users = await getUsers(roomCode);
 
 			const notesQuery = await pool.query<Note>(
 				`SELECT * FROM notes WHERE room_id = $1 ORDER BY category ASC, rank ASC, id ASC`,
@@ -80,8 +78,6 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 
 	socket.on("room:join", async ({ roomCode, userName, token }) => {
 		socket.join(roomCode);
-		socket.data.username = userName;
-		socket.data.roomCode = roomCode;
 
 		try {
 			const result = await pool.query<{ id: string; code: string }>(
@@ -119,16 +115,17 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 			);
 			const notes = notesQuery.rows;
 
-			if (!roomUsers.has(roomCode)) roomUsers.set(roomCode, []);
-			const users = roomUsers.get(roomCode) as string[];
-
-			if (users.includes(userName)) {
+			if (!(await addUser(roomCode, userName))) {
 				socket.emit("room:error", {
 					message: `"${userName}" is already taken in this room.`,
 				});
 				return;
 			}
-			users.push(userName);
+			// Set only after a successful add: disconnect removes users by name, so a socket
+			// rejected for a taken name must not carry that name (it would remove the real user)
+			socket.data.username = userName;
+			socket.data.roomCode = roomCode;
+			const users = await getUsers(roomCode);
 
 			if (users.length > 1) {
 				socket.to(roomCode).emit("user:joined", { userName });
@@ -268,13 +265,11 @@ export function registerSocketHandlers(io: AppServer, socket: AppSocket) {
 		const { username, roomCode } = socket.data;
 		if (!username || !roomCode) return;
 
-		const users = roomUsers.get(roomCode);
-		if (!users) return;
-
-		roomUsers.set(
-			roomCode,
-			users.filter((u) => u !== username),
-		);
+		try {
+			await removeUser(roomCode, username);
+		} catch (err) {
+			console.error("Error removing user from room:", err);
+		}
 		socket.to(roomCode).emit("user:left", { userName: username });
 		console.log(`${username} left room ${roomCode}`);
 	});

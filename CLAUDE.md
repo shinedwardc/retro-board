@@ -47,6 +47,7 @@ PORT=3000
 CLIENT_URL=http://localhost:5173
 DATABASE_URL=postgresql://...
 JWT_SECRET=...
+REDIS_URL=redis://localhost:6379   # optional: presence in Redis/mini-redis instead of memory
 ```
 
 Prod migrations read a separate gitignored `/server/.env.production` (copy from `.env.production.example`) holding the Neon **direct** `DATABASE_URL`. See Database below.
@@ -75,7 +76,7 @@ All state changes flow through Socket.IO events — there are no REST endpoints 
 - `client/src/pages/Home.tsx` — Room creation/joining UI
 
 ### State Management
-No Redux/Zustand — React hooks only. `Board.tsx` owns note state and updates it on each incoming socket event. User presence is tracked in-memory on the server (lost on restart).
+No Redux/Zustand — React hooks only. `Board.tsx` owns note state and updates it on each incoming socket event. User presence lives in `server/src/presence.ts`: in-memory by default (lost on restart), or a Redis set per room (`room:<code>:users`) when `REDIS_URL` is set, kept alive by a 30s TTL renewed every 10s so a crashed server's users expire on their own.
 
 ### Creator Authentication
 When a room is created, the server issues a JWT (30-day expiry) stored in `localStorage`. The `board:clear` action is gated behind this token. The JWT contains the room code and is verified server-side in `handlers.ts`.
