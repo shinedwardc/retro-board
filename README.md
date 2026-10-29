@@ -2,6 +2,8 @@
 
 A real-time collaborative retrospective board. One person creates a room and shares an 8-character code; everyone else joins with a display name — no accounts, no sign-up. Notes, votes, edits, and drag-and-drop reorders sync live to every participant over WebSockets.
 
+**Live demo:** [retrospective-board.duckdns.org](https://retrospective-board.duckdns.org)
+
 ## Why
 
 Running a retro shouldn't require licenses, logins, or a 10-minute setup. Most retro tools front-load friction — create an account, invite teammates by email, pick a plan — before anyone writes a single note. Retro Board strips that away: the only identity is the name you type when you join, and the only barrier to entry is a room code. The trade-off is deliberate — sessions are lightweight and disposable, with just enough persistence (PostgreSQL-backed rooms and notes) that a dropped connection or page refresh doesn't lose the board.
