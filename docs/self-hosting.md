@@ -37,9 +37,15 @@ ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw --force enable
 # Only on a 1 GB machine: 2 GB of swap
 fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
 echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+# A non-root user that owns the app and runs deploys (CI logs in as this user)
+adduser --disabled-password --gecos "" deploy
+usermod -aG docker deploy   # note: the docker group is root-equivalent on this box
 ```
 
 ## 3. Configure and start
+
+As the `deploy` user (`su - deploy`):
 
 ```bash
 git clone https://github.com/shinedwardc/retro-board.git
@@ -74,11 +80,51 @@ docker compose pull && docker compose up -d
 
 Creator tokens are signed with `JWT_SECRET`. To keep existing room creators' "clear board" rights, reuse the `JWT_SECRET` from Render.
 
+## 5. Automatic deploys from CI (optional)
+
+Once set up, every push to `main` that passes CI deploys itself: the `deploy` job in `.github/workflows/ci.yml` SSHes in as `deploy` and runs `scripts/deploy.sh sha-<commit>`, then checks `https://$DOMAIN/health`. Until the `DOMAIN` variable below exists, the job is skipped.
+
+**1. Make a key just for CI** (on your own machine, not the server):
+
+```bash
+ssh-keygen -t ed25519 -N "" -C "retro-board CI deploy" -f retro-deploy
+```
+
+**2. Let it run the deploy script and nothing else.** On the server, as `deploy`, add one line to `~/.ssh/authorized_keys` (paste the contents of `retro-deploy.pub` at the end):
+
+```bash
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+echo 'command="/home/deploy/retro-board/scripts/deploy.sh",restrict ssh-ed25519 AAAA... retro-board CI deploy' >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+`command=` means this key can only start `deploy.sh`, whatever CI asks for; the script reads the requested tag and refuses anything that isn't `latest` or `sha-<commit>`. `restrict` turns off port forwarding, agent forwarding and terminals.
+
+**3. Pin the server's host key**, so CI refuses to talk to anything pretending to be your server:
+
+```bash
+ssh-keyscan -t ed25519 retro.yourdomain.com > known_hosts   # on your machine
+ssh-keygen -lf known_hosts                                   # compare this fingerprint...
+ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub             # ...with this one, run on the server
+```
+
+**4. Give GitHub the values** (from your machine, in a checkout of the repo):
+
+```bash
+gh api -X PUT repos/shinedwardc/retro-board/environments/production
+gh secret set DEPLOY_SSH_KEY --env production < retro-deploy
+gh secret set DEPLOY_KNOWN_HOSTS --env production < known_hosts
+gh variable set DOMAIN --body retro.yourdomain.com   # turns the deploy job on
+# gh variable set DEPLOY_USER --body someone-else   # only if the user isn't "deploy"
+```
+
+Then delete `retro-deploy` from your machine; GitHub holds the only copy it needs. The next push to `main` deploys, and the repo's **Environments → production** page lists every deploy. To require a click before each one, add yourself under **Settings → Environments → production → Required reviewers**.
+
 ## Day to day
 
 ```bash
-git pull && docker compose pull && docker compose up -d   # deploy the latest images CI pushed from main
-IMAGE_TAG=sha-abc1234 docker compose up -d                 # run (or roll back to) one commit's images
+./scripts/deploy.sh                                        # deploy the latest images CI pushed from main
+./scripts/deploy.sh sha-abc1234                            # run (or roll back to) one commit's images
 docker compose build mini-redis && docker compose up -d    # pick up a newer mini-redis main
 docker compose ps                                          # what's running
 docker compose logs -f server                              # follow server logs (also: web, postgres, mini-redis)
@@ -88,6 +134,6 @@ docker compose restart server
 docker compose exec -T postgres pg_dump -U retro retro | gzip > backup-$(date +%F).sql.gz
 ```
 
-Image tags are on the GitHub repo's Packages page; `sha-abc1234` is the short commit SHA. Rolling back only swaps code: migrations the newer server already applied stay applied.
+`deploy.sh` pulls the repo, pulls that tag's images, records it as `IMAGE_TAG` in `.env` (so a plain `docker compose up -d` keeps running it), restarts what changed and prunes old images. Image tags are on the GitHub repo's Packages page; `sha-abc1234` is the short commit SHA. Rolling back only swaps code: migrations the newer server already applied stay applied.
 
 `docker compose down` stops everything and keeps the data. `docker compose down -v` **deletes** the database and the certificates.

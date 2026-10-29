@@ -116,3 +116,43 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  # Deploys main's freshly pushed images: SSHes to the server, where the deploy key is locked
+  # to scripts/deploy.sh, then checks /health. Skipped until the DOMAIN repo variable is set.
+  # Setup: docs/self-hosting.md, "Automatic deploys from CI".
+  deploy:
+    needs: images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DOMAIN != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://${{ vars.DOMAIN }}
+    # One deploy at a time; a newer push waits instead of cancelling one mid-way
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    env:
+      DOMAIN: ${{ vars.DOMAIN }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'deploy' }}
+
+    steps:
+      - name: Install deploy key and pinned host key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          (umask 077; printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key)
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # The forced command on the server reads the tag from this "command"
+      - name: Deploy this commit's images
+        run: |
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DOMAIN" "sha-${GITHUB_SHA::7}"
+
+      - name: Health check
+        run: |
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors \
+            "https://$DOMAIN/health"
