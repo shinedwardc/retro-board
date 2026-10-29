@@ -34,8 +34,13 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-	"room:create": (data: { roomCode: string; userName: string }) => void;
-	"room:join": (data: { roomCode: string; userName: string; token?: string }) => void;
+	"room:create": (data: { roomCode: string; userName: string; clientId?: string }) => void;
+	"room:join": (data: {
+		roomCode: string;
+		userName: string;
+		token?: string;
+		clientId?: string;
+	}) => void;
 	"note:create": (data: { roomCode: string; note: Omit<Note, "created_at"> }) => void;
 	"note:update": (data: { roomCode: string; noteId: string; updatedContent: string }) => void;
 	"note:vote": (data: { roomCode: string; noteId: string }) => void;

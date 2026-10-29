@@ -11,6 +11,7 @@ import socket from "../socket";
 import type { Note, NoteCategory, Session } from "../types/index";
 import getUserColor from "../utils/colors";
 import { byRank, computeRankForDrop, rankForNewNote } from "../utils/ordering";
+import { getClientId } from "../utils/session";
 import "react-loading-skeleton/dist/skeleton.css";
 
 interface BoardProps {
@@ -83,18 +84,25 @@ const Board = ({ session, onLeave }: BoardProps) => {
 	notesRef.current = notes;
 
 	useEffect(() => {
-		socket.once("connect", () => {
+		// Runs on every connect, not just the first: after a server restart the new
+		// process doesn't know this socket is in the room, so we have to join again.
+		const clientId = getClientId();
+		let hasConnected = false;
+		socket.on("connect", () => {
 			setIsWaking(false);
-			if (session.intent === "create") {
-				socket.emit("room:create", { roomCode, userName });
+			// Only the first connect can create the room; on a reconnect it already exists
+			if (session.intent === "create" && !hasConnected) {
+				socket.emit("room:create", { roomCode, userName, clientId });
 			} else {
 				const token = localStorage.getItem(`creator-token:${roomCode}`);
 				socket.emit("room:join", {
 					roomCode,
 					userName,
 					token: token ?? undefined,
+					clientId,
 				});
 			}
+			hasConnected = true;
 		});
 
 		// A failed attempt usually just means the free-tier server is cold-starting.
@@ -155,6 +163,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		socket.on("board:cleared", () => dispatch({ type: "clear" }));
 
 		return () => {
+			socket.off("connect");
 			socket.off("connect_error");
 			socket.io.off("reconnect_failed");
 			socket.off("room:error");

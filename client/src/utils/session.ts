@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import type { Session } from "../types/index";
 
 const ROOM_PREFIX = "/room/";
@@ -5,6 +6,20 @@ const ROOM_PREFIX = "/room/";
 // localStorage key for the remembered display name, so a refresh can rejoin
 // without re-prompting.
 export const USERNAME_KEY = "retro:userName";
+
+// sessionStorage key for this tab's id. It survives reloads and reconnects but not
+// new tabs, so the server can tell "this tab coming back" from "someone else
+// picking a name that's already taken".
+const CLIENT_ID_KEY = "retro:clientId";
+
+export function getClientId(): string {
+	let id = sessionStorage.getItem(CLIENT_ID_KEY);
+	if (!id) {
+		id = uuidv4();
+		sessionStorage.setItem(CLIENT_ID_KEY, id);
+	}
+	return id;
+}
 
 /** Extract the room code from a `/room/CODE` path, or null if it isn't one. */
 export function parseRoomFromPath(pathname: string): string | null {
