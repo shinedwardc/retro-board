@@ -1,13 +1,15 @@
-# Runs the whole app on one machine: `docker compose up -d --build`
+# Runs the whole app on one machine. Deploy: `docker compose pull && docker compose up -d`
 # Reads DOMAIN, POSTGRES_PASSWORD and JWT_SECRET from .env (copy .env.example)
+#
+# web and server are prebuilt by CI and pulled from GHCR. IMAGE_TAG picks the version
+# (default latest; set sha-<commit> to pin or roll back). `docker compose up -d --build`
+# still builds them from this checkout instead.
 services:
   web:
-    build:
-      context: ./client
-      args:
-        VITE_SERVER_URL: https://${DOMAIN:?set DOMAIN in .env}
+    image: ghcr.io/shinedwardc/retro-board-web:${IMAGE_TAG:-latest}
+    build: ./client
     environment:
-      DOMAIN: ${DOMAIN}
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
     ports:
       - "80:80"
       - "443:443"
@@ -20,6 +22,7 @@ services:
     restart: unless-stopped
 
   server:
+    image: ghcr.io/shinedwardc/retro-board-server:${IMAGE_TAG:-latest}
     build: ./server
     environment:
       PORT: 3000

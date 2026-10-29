@@ -4,9 +4,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-# Vite bakes this into the bundle at build time, so it must be passed as a build arg
-ARG VITE_SERVER_URL
-ENV VITE_SERVER_URL=$VITE_SERVER_URL
+# No VITE_SERVER_URL here: the bundle connects to whatever origin serves it (see src/socket.ts),
+# so the same image works for any DOMAIN
 RUN npm run build
 
 # Runtime stage: Caddy serves the files and proxies Socket.IO to the server (see Caddyfile)

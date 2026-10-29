@@ -114,5 +114,6 @@ Both packages use Biome (not ESLint/Prettier), configured by a single shared `bi
 GitHub Actions (`.github/workflows/ci.yml`):
 1. `lint` — one job runs Biome once over both apps via the shared root config (`biome check client/src server/src`)
 2. `typecheck-server` and `typecheck-client` — per-app typecheck (client also builds), in parallel
+3. `images` — after those pass, builds the `web` (client/Dockerfile) and `server` images. On pushes to `main` only, pushes them to GHCR as `ghcr.io/shinedwardc/retro-board-{web,server}`, tagged `sha-<short sha>` and `latest`
 
-CI does not deploy; deploys are a manual `git pull && docker compose up -d --build` on the server.
+CI does not deploy; deploys are a manual `git pull && docker compose pull && docker compose up -d` on the server. Compose's `IMAGE_TAG` (default `latest`) selects which images run. The client image has no domain baked in: production builds without `VITE_SERVER_URL` connect Socket.IO to the page's own origin (`client/src/socket.ts`).

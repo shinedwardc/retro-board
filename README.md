@@ -120,4 +120,4 @@ User presence is tracked in-memory on the server (lost on restart); rooms and no
 
 `docker-compose.yml` runs the whole stack (Caddy + server + Postgres + mini-redis) on one machine behind your own domain. See [docs/self-hosting.md](docs/self-hosting.md).
 
-GitHub Actions (`.github/workflows/ci.yml`) runs three parallel jobs on every push — a single Biome check over both apps (shared root `biome.json`), a server typecheck, and a client typecheck + build. It does not deploy.
+GitHub Actions (`.github/workflows/ci.yml`) runs three parallel jobs on every push — a single Biome check over both apps (shared root `biome.json`), a server typecheck, and a client typecheck + build — then builds the `web` and `server` Docker images. On `main` it pushes them to GHCR (`ghcr.io/shinedwardc/retro-board-{web,server}`, tagged `sha-<commit>` and `latest`), and the server deploys with `docker compose pull && docker compose up -d`.
