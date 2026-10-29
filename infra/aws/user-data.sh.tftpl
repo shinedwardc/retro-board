@@ -1,0 +1,67 @@
+#!/bin/bash
+# First-boot setup for the retro-board server, run once by cloud-init as root.
+# Rendered by Terraform's templatefile(): dollar-brace placeholders and the if/endif
+# directive are filled in by Terraform; plain $NAME variables are bash.
+# Progress: /var/log/cloud-init-output.log on the server.
+# No `set -x`: it would print the secrets into that log and the EC2 console output.
+set -euo pipefail
+
+REGION="${region}"
+PARAMS="${param_prefix}"
+
+# Reads one SecureString from SSM Parameter Store, using the instance's IAM role.
+# Retries because the role's credentials can take a few seconds to show up after boot.
+param() {
+  for _ in 1 2 3 4 5; do
+    if aws ssm get-parameter --region "$REGION" --name "$PARAMS/$1" \
+      --with-decryption --query Parameter.Value --output text; then
+      return 0
+    fi
+    sleep 5
+  done
+  echo "Could not read $PARAMS/$1 from SSM Parameter Store" >&2
+  return 1
+}
+
+echo "==> Installing the AWS CLI"
+snap wait system seed.loaded
+snap install aws-cli --classic
+export PATH="$PATH:/snap/bin" # cloud-init's PATH doesn't include snap binaries
+
+%{ if use_duckdns ~}
+# Done first so the new IP has spread through DNS by the time Caddy asks for a certificate.
+# An empty ip= makes DuckDNS use the address the request came from: this server's public IP.
+echo "==> Pointing ${domain} at this server"
+if ! curl -fsS "https://www.duckdns.org/update?domains=${duckdns_subdomain}&token=$(param DUCKDNS_TOKEN)&ip=" | grep -q '^OK'; then
+  echo "DuckDNS update failed: check duckdns_token and that ${duckdns_subdomain} exists in your DuckDNS account" >&2
+  exit 1
+fi
+
+%{ endif ~}
+# Building the client and server images can briefly need more than 2 GB of memory
+echo "==> Adding 2 GB of swap"
+fallocate -l 2G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+echo "==> Installing Docker"
+curl -fsSL https://get.docker.com | sh
+
+echo "==> Fetching ${repo_url} (${repo_ref})"
+git clone --depth 1 --branch "${repo_ref}" "${repo_url}" /opt/retro-board
+cd /opt/retro-board
+
+echo "==> Writing .env"
+umask 077
+cat > .env <<EOF
+DOMAIN=${domain}
+POSTGRES_PASSWORD=$(param POSTGRES_PASSWORD)
+JWT_SECRET=$(param JWT_SECRET)
+EOF
+
+echo "==> Building and starting the app"
+docker compose up -d --build
+
+echo "==> Done: https://${domain}"

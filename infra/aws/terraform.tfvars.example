@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars (gitignored) and fill in.
+
+# Your DuckDNS hostname (free at duckdns.org), or any domain whose DNS you can edit
+domain = "retro-yourname.duckdns.org"
+
+# From the DuckDNS page after you log in. Leave empty if you use your own domain.
+duckdns_token = ""
+
+# Optional: reuse an existing JWT_SECRET (e.g. from Render) so room creators keep their rights
+# jwt_secret = ""
+
+# Optional overrides
+# region        = "ap-northeast-2"
+# instance_type = "t4g.small"
+# repo_ref      = "main"

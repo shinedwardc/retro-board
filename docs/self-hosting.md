@@ -81,3 +81,7 @@ docker compose exec -T postgres pg_dump -U retro retro | gzip > backup-$(date +%
 ```
 
 `docker compose down` stops everything and keeps the data. `docker compose down -v` **deletes** the database and the certificates.
+
+## On AWS with Terraform
+
+`infra/aws/` creates an EC2 server in Seoul that runs this same setup, with DuckDNS, secrets in SSM Parameter Store and no SSH port. You start it with `terraform apply` and remove it with `terraform destroy`. See [infra/aws/README.md](../infra/aws/README.md).

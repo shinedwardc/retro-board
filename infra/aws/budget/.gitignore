@@ -1,0 +1,9 @@
+# Provider downloads
+.terraform/
+# State holds the generated passwords and secrets
+*.tfstate
+*.tfstate.*
+# Your filled-in values, including tokens
+*.tfvars
+!*.tfvars.example
+crash.log
