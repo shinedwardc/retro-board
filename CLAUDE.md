@@ -109,6 +109,8 @@ Both packages use Biome (not ESLint/Prettier), configured by a single shared `bi
 
 `docker-compose.yml` runs the stack on one machine: `web` (Caddy serving the built client from `client/Dockerfile` + `client/Caddyfile`, proxying `/socket.io` and `/health`, automatic HTTPS), `server` (runs `npm run migrate`, then starts), `postgres`, and `mini-redis` (built from its GitHub `main`). Config comes from a root `.env` (see `.env.example`). Setup steps: `docs/self-hosting.md`.
 
+`infra/aws/` is Terraform for running that stack on one EC2 instance (Seoul, `t4g.small`, default VPC, SSM instead of SSH, secrets in SSM Parameter Store, DuckDNS updated on boot by `user-data.sh.tftpl`). It's meant to be applied for a session and destroyed afterwards. `infra/aws/budget/` is a separate stack for a monthly cost alert that stays up. Validate with `terraform fmt -check -recursive && terraform validate` in each folder.
+
 ## CI/CD
 
 GitHub Actions (`.github/workflows/ci.yml`):
