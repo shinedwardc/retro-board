@@ -114,5 +114,7 @@ Both packages use Biome (not ESLint/Prettier), configured by a single shared `bi
 GitHub Actions (`.github/workflows/ci.yml`):
 1. `lint` — one job runs Biome once over both apps via the shared root config (`biome check client/src server/src`)
 2. `typecheck-server` and `typecheck-client` — per-app typecheck (client also builds), in parallel
+3. `images` — after those pass, builds the `web` (client/Dockerfile) and `server` images. On pushes to `main` only, pushes them to GHCR as `ghcr.io/shinedwardc/retro-board-{web,server}`, tagged `sha-<short sha>` and `latest`
+4. `deploy` — on `main` only, after `images`, and only once the `DOMAIN` repo variable is set: SSHes as `deploy@$DOMAIN` with the `production` environment's `DEPLOY_SSH_KEY` (host key pinned via `DEPLOY_KNOWN_HOSTS`), sends `sha-<short sha>`, then curls `https://$DOMAIN/health`. On the server that key is locked by `authorized_keys` `command=` to `scripts/deploy.sh`, which takes the tag from `SSH_ORIGINAL_COMMAND`, validates it, `git pull`s, pulls the images, writes `IMAGE_TAG` into `.env`, `up -d`s and prunes old images
 
-CI does not deploy; deploys are a manual `git pull && docker compose up -d --build` on the server.
+Manual deploys and rollbacks on the server use the same script: `./scripts/deploy.sh [latest|sha-<commit>]`. Compose's `IMAGE_TAG` (default `latest`) selects which images run. The client image has no domain baked in: production builds without `VITE_SERVER_URL` connect Socket.IO to the page's own origin (`client/src/socket.ts`).
