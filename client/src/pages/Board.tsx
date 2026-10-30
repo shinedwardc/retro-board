@@ -7,6 +7,7 @@ import Skeleton from "react-loading-skeleton";
 import { v4 as uuidv4 } from "uuid";
 import ConfirmDialog from "../components/confirmDialog";
 import NoteColumn from "../components/NoteColumn";
+import ShareOverlay from "../components/ShareOverlay";
 import socket from "../socket";
 import type { Note, NoteCategory, Session } from "../types/index";
 import getUserColor from "../utils/colors";
@@ -75,6 +76,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 	const [notes, dispatch] = useReducer(notesReducer, []);
 	const [isCreator, setIsCreator] = useState(false);
 	const [showConfirm, setShowConfirm] = useState(false);
+	const [showShare, setShowShare] = useState(false);
 	const [activeTab, setActiveTab] = useState<NoteCategory>("positive");
 	const [isReady, setIsReady] = useState(false);
 	const [isWaking, setIsWaking] = useState(false);
@@ -260,6 +262,8 @@ const Board = ({ session, onLeave }: BoardProps) => {
 		[roomCode],
 	);
 
+	const closeShare = useCallback(() => setShowShare(false), []);
+
 	const handleConfirmClear = useCallback(() => {
 		socket.emit("board:clear", { roomCode });
 		setShowConfirm(false);
@@ -329,6 +333,7 @@ const Board = ({ session, onLeave }: BoardProps) => {
 					onCancel={() => setShowConfirm(false)}
 				/>
 			)}
+			{showShare && <ShareOverlay roomCode={roomCode} users={users} onClose={closeShare} />}
 			<div className="flex h-screen flex-col bg-surface-0 p-3 sm:p-6">
 				<div className="mb-3 flex flex-wrap items-center justify-between gap-y-2 sm:mb-6">
 					<div className="grid grid-flow-col items-center gap-x-4">
@@ -356,6 +361,13 @@ const Board = ({ session, onLeave }: BoardProps) => {
 								</h3>
 							</div>
 						)}
+						<button
+							type="button"
+							onClick={() => setShowShare(true)}
+							className="rounded-lg bg-accent p-2 text-sm text-white hover:bg-accent-hover"
+						>
+							Invite
+						</button>
 						<button
 							type="button"
 							onClick={handleCopyRoomId}
